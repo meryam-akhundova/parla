@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, radius, fontSize, fontWeight } from '../theme/theme';
+import { View, Text, StyleSheet } from "react-native";
+import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
 interface HintBoxProps {
   message: string;
@@ -20,7 +20,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.primaryLight,
     borderWidth: 0.5,
-    borderColor: colors.borderLight,
+    borderColor: colors.primaryMid,
     borderRadius: radius.md,
     padding: spacing.md,
   },

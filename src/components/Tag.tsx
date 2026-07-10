@@ -1,12 +1,12 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, radius, fontSize, fontWeight } from '../theme/theme';
+import { View, Text, StyleSheet } from "react-native";
+import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
 interface TagProps {
   label: string;
-  variant?: 'purple' | 'coral' | 'teal' | 'amber';
+  variant?: "purple" | "coral" | "teal" | "amber";
 }
 
-export function Tag({ label, variant = 'purple' }: TagProps) {
+export function Tag({ label, variant = "purple" }: TagProps) {
   const variantStyles = {
     purple: styles.purple,
     coral: styles.coral,
@@ -30,7 +30,7 @@ export function Tag({ label, variant = 'purple' }: TagProps) {
 
 const styles = StyleSheet.create({
   base: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.full,

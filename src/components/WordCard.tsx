@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, radius, fontSize, fontWeight } from '../theme/theme';
-import { Tag } from './Tag';
+import { View, Text, StyleSheet } from "react-native";
+import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
+import { Tag } from "./Tag";
 
 interface WordCardProps {
   word: string;
@@ -9,7 +9,7 @@ interface WordCardProps {
   exampleMessage: string;
   exampleTranslation?: string;
   category?: string;
-  categoryVariant?: 'purple' | 'coral' | 'teal' | 'amber';
+  categoryVariant?: "purple" | "coral" | "teal" | "amber";
 }
 
 export function WordCard({
@@ -19,13 +19,11 @@ export function WordCard({
   exampleMessage,
   exampleTranslation,
   category,
-  categoryVariant = 'purple',
+  categoryVariant = "purple",
 }: WordCardProps) {
   return (
     <View style={styles.container}>
-      {category ? (
-        <Tag label={category} variant={categoryVariant} />
-      ) : null}
+      {category ? <Tag label={category} variant={categoryVariant} /> : null}
 
       <Text style={styles.word}>{word}</Text>
       <Text style={styles.romanization}>{romanization}</Text>
@@ -33,10 +31,17 @@ export function WordCard({
 
       <View style={styles.exampleSection}>
         <Text style={styles.exampleLabel}>in a message</Text>
-        <Text style={styles.exampleMessage}>"{exampleMessage}"</Text>
-        {exampleTranslation ? (
-          <Text style={styles.exampleTranslation}>{exampleTranslation}</Text>
-        ) : null}
+        <View style={styles.exampleBubble}>
+          <Text style={styles.exampleMessage}>
+            "{exampleMessage}"
+            {exampleTranslation ? (
+              <Text style={styles.exampleTranslation}>
+                {" "}
+                → "{exampleTranslation}"
+              </Text>
+            ) : null}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -44,7 +49,7 @@ export function WordCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 0.5,
     borderColor: colors.border,
     borderRadius: radius.xl,
@@ -52,41 +57,47 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   word: {
-    color: colors.textPrimary,
+    color: colors.primary,
     fontSize: fontSize.display,
-    fontWeight: fontWeight.semibold,
+    fontWeight: fontWeight.medium,
     marginTop: spacing.xs,
   },
   romanization: {
-    color: colors.textSecondary,
-    fontSize: fontSize.bodyLg,
+    color: colors.primaryFaint,
+    fontSize: fontSize.small,
     fontWeight: fontWeight.regular,
+    fontStyle: "italic",
   },
   meaning: {
     color: colors.textPrimary,
-    fontSize: fontSize.heading,
-    fontWeight: fontWeight.medium,
+    fontSize: fontSize.bodyLg,
+    fontWeight: fontWeight.regular,
   },
   exampleSection: {
     marginTop: spacing.sm,
     paddingTop: spacing.md,
     borderTopWidth: 0.5,
-    borderTopColor: colors.borderLight,
-    gap: spacing.xs,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
   },
   exampleLabel: {
-    color: colors.textMuted,
-    fontSize: fontSize.small,
+    color: colors.textSecondary,
+    fontSize: fontSize.label,
     fontWeight: fontWeight.medium,
   },
+  exampleBubble: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 10,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
   exampleMessage: {
-    color: colors.textSecondary,
+    color: colors.primaryText,
     fontSize: fontSize.body,
     fontWeight: fontWeight.regular,
+    lineHeight: 20,
   },
   exampleTranslation: {
-    color: colors.textMuted,
-    fontSize: fontSize.small,
-    fontWeight: fontWeight.regular,
+    color: colors.primaryFaint,
   },
 });

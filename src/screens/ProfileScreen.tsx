@@ -1,0 +1,249 @@
+import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
+
+const STATS = [
+  { num: "12", label: "day streak" },
+  { num: "840", label: "shine score" },
+  { num: "64", label: "words earned" },
+];
+
+const BADGES = [
+  { icon: "✦", label: "first shine", earned: true },
+  { icon: "🔥", label: "7-day streak", earned: true },
+  { icon: "💬", label: "first chat", earned: true },
+  { icon: "🌍", label: "polyglot", earned: false },
+  { icon: "✨", label: "full shine", earned: false },
+];
+
+export function ProfileScreen() {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.hero}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarEmoji}>👩</Text>
+          </View>
+          <Text style={styles.name}>sofia</Text>
+          <Text style={styles.meta}>learning turkish · since march 2026</Text>
+          <View style={styles.pacePill}>
+            <Text style={styles.paceText}>✦ steady glow</Text>
+          </View>
+        </View>
+
+        <View style={styles.statsRow}>
+          {STATS.map((stat) => (
+            <View key={stat.label} style={styles.stat}>
+              <Text style={styles.statNum}>{stat.num}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>THIS WEEK</Text>
+        <View style={styles.weekCard}>
+          <View style={styles.weekRow}>
+            <Text style={styles.weekLabel}>lessons completed</Text>
+            <Text style={styles.weekValue}>6 / 7</Text>
+          </View>
+          <View style={styles.xpTrack}>
+            <View style={[styles.xpFill, { width: "86%" }]} />
+          </View>
+          <Text style={styles.weekHint}>one more for a perfect week ✦</Text>
+        </View>
+
+        <Text style={styles.sectionLabel}>BADGES</Text>
+        <View style={styles.badgeRow}>
+          {BADGES.map((badge) => (
+            <View key={badge.label} style={styles.badgeItem}>
+              <View
+                style={[
+                  styles.badge,
+                  badge.earned ? styles.badgeEarned : styles.badgeLocked,
+                ]}
+              >
+                <Text style={styles.badgeIcon}>{badge.icon}</Text>
+              </View>
+              <Text
+                style={[
+                  styles.badgeLabel,
+                  !badge.earned && styles.badgeLabelLocked,
+                ]}
+              >
+                {badge.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  scroll: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  hero: {
+    alignItems: "center",
+    paddingVertical: 10,
+    marginBottom: spacing.lg,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 2,
+    borderColor: colors.primaryMid,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
+  },
+  avatarEmoji: {
+    fontSize: 28,
+  },
+  name: {
+    fontSize: fontSize.headingLg,
+    fontWeight: fontWeight.medium,
+    color: colors.primaryDark,
+  },
+  meta: {
+    fontSize: fontSize.label,
+    color: colors.primaryFaint,
+    marginTop: 2,
+  },
+  pacePill: {
+    backgroundColor: colors.amberBg,
+    borderRadius: radius.full,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.sm,
+  },
+  paceText: {
+    fontSize: fontSize.small,
+    fontWeight: fontWeight.medium,
+    color: colors.amberStrong,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  stat: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    alignItems: "center",
+  },
+  statNum: {
+    fontSize: 22,
+    fontWeight: fontWeight.medium,
+    color: colors.primary,
+  },
+  statLabel: {
+    fontSize: fontSize.micro,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  sectionLabel: {
+    fontSize: fontSize.micro,
+    fontWeight: fontWeight.medium,
+    color: colors.textMuted,
+    letterSpacing: 0.6,
+    marginBottom: spacing.sm,
+  },
+  weekCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: 14,
+    marginBottom: 14,
+  },
+  weekRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
+  weekLabel: {
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
+  },
+  weekValue: {
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.medium,
+    color: colors.primary,
+  },
+  xpTrack: {
+    height: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.borderLight,
+    overflow: "hidden",
+  },
+  xpFill: {
+    height: "100%",
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+  },
+  weekHint: {
+    fontSize: fontSize.micro,
+    color: colors.primaryFaint,
+    marginTop: 5,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  badgeItem: {
+    alignItems: "center",
+    width: 56,
+  },
+  badge: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeEarned: {
+    backgroundColor: colors.primaryLight,
+    borderWidth: 0.5,
+    borderColor: colors.primaryMid,
+  },
+  badgeLocked: {
+    backgroundColor: colors.background,
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    opacity: 0.45,
+  },
+  badgeIcon: {
+    fontSize: 20,
+  },
+  badgeLabel: {
+    fontSize: 9,
+    color: colors.primary,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  badgeLabelLocked: {
+    color: colors.textMuted,
+  },
+});
