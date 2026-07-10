@@ -4,6 +4,7 @@ export const colors = {
     primaryLight: '#EEEDFE',
     primaryMid: '#CECBF6',
     primaryText: '#3C3489',
+    primaryFaint: '#AFA9EC',
     primaryDark: '#26215C',
   
     // Coral
