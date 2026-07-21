@@ -34,6 +34,7 @@ type AuthState = {
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   saveOnboarding: () => Promise<string | null>;
+  awardQuizSuccess: () => Promise<string | null>;
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -94,6 +95,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId);
+    if (error) return error.message;
+    await get().loadProfile();
+    return null;
+  },
+
+  awardQuizSuccess: async () => {
+    const { session, profile } = get();
+    const userId = session?.user.id;
+    if (!userId || !profile) return "Not signed in";
+  
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        shine_score: profile.shine_score + 10,
+        words_learned: profile.words_learned + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+  
     if (error) return error.message;
     await get().loadProfile();
     return null;

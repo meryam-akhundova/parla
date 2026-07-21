@@ -13,6 +13,8 @@ import { fetchSlangWords } from "../lib/slang";
 import { buildMeaningQuiz, type MeaningQuiz } from "../lib/buildMeaningQuiz";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
+import { useAuthStore } from "../store/authStore";
+
 export function QuizScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -20,6 +22,8 @@ export function QuizScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  
+  const awardQuizSuccess = useAuthStore((s) => s.awardQuizSuccess);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,7 +126,11 @@ export function QuizScreen() {
             label={opt.label}
             state={optionState(opt.id, opt.correct)}
             onPress={() => {
-              if (!answered) setSelectedId(opt.id);
+              if (answered) return;
+              setSelectedId(opt.id);
+              if (opt.correct) {
+                void awardQuizSuccess();
+              }
             }}
           />
         ))}
