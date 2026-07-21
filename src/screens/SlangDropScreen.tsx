@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,13 +9,59 @@ import { WordCard } from "../components/WordCard";
 import { HintBox } from "../components/HintBox";
 import { VibeMeter } from "../components/VibeMeter";
 import { Button } from "../components/Button";
-import { mockSlangWords } from "../data/mockSlang";
+import { fetchSlangWords } from "../lib/slang";
+import type { SlangWord } from "../data/types";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
 export function SlangDropScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const insets = useSafeAreaInsets();
-  const word = mockSlangWords[0];
+  
+  const [word, setWord] = useState<SlangWord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const { data, error: fetchError } = await fetchSlangWords();
+      if (cancelled) return;
+
+      if (fetchError) {
+        setError(fetchError);
+        setLoading(false);
+        return;
+      }
+
+      setWord(data[0] ?? null);
+      if (!data[0]) setError("No slang words yet");
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
+        <Text style={styles.statusText}>loading…</Text>
+      </View>
+    );
+  }
+  
+  if (error || !word) {
+    return (
+      <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
+        <Text style={styles.statusText}>{error ?? "No word found"}</Text>
+        <Pressable onPress={() => navigation.goBack()} style={{ marginTop: spacing.md }}>
+          <Text style={styles.backLink}>go back</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -122,5 +169,18 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: fontSize.small,
     color: colors.primaryText,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  statusText: {
+    fontSize: fontSize.bodyLg,
+    color: colors.textSecondary,
+  },
+  backLink: {
+    fontSize: fontSize.body,
+    color: colors.primary,
   },
 });

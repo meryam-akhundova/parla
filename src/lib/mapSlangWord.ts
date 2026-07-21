@@ -1,0 +1,37 @@
+import type { Dialect, SlangCategory, SlangWord, VibeLevel } from "../data/types";
+
+export type SlangWordRow = {
+    id: string;
+    word: string;
+    romanization: string;
+    meaning: string;
+    example_message: string;
+    example_translation: string;
+    vibe_friends: string;
+    vibe_strangers: string;
+    vibe_formal: string;
+    category: string;
+    dialect: string;
+    language: string;
+    similar_words: string[] | null;
+    cultural_note: string;
+};
+
+export function mapSlangWord(row: SlangWordRow): SlangWord {
+    return {
+        id: row.id,
+        word: row.word,
+        romanization: row.romanization,
+        meaning: row.meaning,
+        exampleMessage: row.example_message,
+        exampleTranslation: row.example_translation,
+        vibeFriends: row.vibe_friends as VibeLevel,
+        vibeStrangers: row.vibe_strangers as VibeLevel,
+        vibeFormal: row.vibe_formal as VibeLevel,
+        category: row.category as SlangCategory,
+        dialect: row.dialect as Dialect,
+        language: row.language as SlangWord["language"],
+        similarWords: row.similar_words ?? [],
+        culturalNote: row.cultural_note,
+    };
+}
