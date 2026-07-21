@@ -9,6 +9,9 @@ type Profile = {
   goal: string | null;
   pace: string | null;
   onboarding_completed: boolean;
+  streak_days: number;
+  shine_score: number;
+  words_learned: number;
 };
 
 type OnboardingDraft = {

@@ -17,6 +17,9 @@ export function HomeScreen() {
   const name = profile?.display_name?.trim() || "you";
   const language = profile?.language ?? "turkish";
 
+  const streakDays = profile?.streak_days ?? 0;
+  const shineScore = profile?.shine_score ?? 0;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
       <ScrollView
@@ -38,11 +41,11 @@ export function HomeScreen() {
         <View style={styles.streakBanner}>
           <View>
             <Text style={styles.streakLabel}>your streak</Text>
-            <Text style={styles.streakValue}>12 days</Text>
+            <Text style={styles.streakValue}>{streakDays} days</Text>
           </View>
           <View style={styles.streakRight}>
             <Text style={styles.streakLabel}>shine score</Text>
-            <Text style={styles.streakValue}>✦ 840</Text>
+            <Text style={styles.streakValue}>✦ {shineScore}</Text>
           </View>
         </View>
 

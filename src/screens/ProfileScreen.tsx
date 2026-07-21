@@ -12,12 +12,6 @@ const PACE_LABELS: Record<string, string> = {
   full: "full shine",
 };
 
-const STATS = [
-  { num: "12", label: "day streak" },
-  { num: "840", label: "shine score" },
-  { num: "64", label: "words earned" },
-];
-
 const BADGES = [
   { icon: "✦", label: "first shine", earned: true },
   { icon: "🔥", label: "7-day streak", earned: true },
@@ -35,6 +29,16 @@ export function ProfileScreen() {
   const language = profile?.language ?? "turkish";
   const paceKey = profile?.pace ?? "steady";
   const paceLabel = PACE_LABELS[paceKey] ?? paceKey;
+
+  const streakDays = profile?.streak_days ?? 0;
+  const shineScore = profile?.shine_score ?? 0;
+  const wordsLearned = profile?.words_learned ?? 0;
+
+  const stats = [
+    { num: String(streakDays), label: "day streak" },
+    { num: String(shineScore), label: "shine score" },
+    { num: String(wordsLearned), label: "words earned" },
+  ];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
@@ -54,7 +58,7 @@ export function ProfileScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          {STATS.map((stat) => (
+          {stats.map((stat) => (
             <View key={stat.label} style={styles.stat}>
               <Text style={styles.statNum}>{stat.num}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
