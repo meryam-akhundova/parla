@@ -1,8 +1,13 @@
 import { StatusBar } from "expo-status-bar";
 
+import { AuthProvider } from "./src/providers/AuthProvider";
 import RootNavigator from "./src/navigation/RootNavigator";
 
 export default function App() {
-  <StatusBar style="auto" />;
-  return <RootNavigator />;
+  return (
+    <AuthProvider>
+      <StatusBar style="auto" />
+      <RootNavigator />
+    </AuthProvider>
+  );
 }

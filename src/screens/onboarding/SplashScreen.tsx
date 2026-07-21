@@ -40,12 +40,12 @@ export function SplashScreen() {
       <View style={styles.bottom}>
         <Button
           label="get started"
-          onPress={() => navigation.navigate("OnboardingLanguage")}
+          onPress={() => navigation.navigate("SignUp")}
         />
         <Button
           label="i already have an account"
           variant="ghost"
-          onPress={() => navigation.navigate("Main")}
+          onPress={() => navigation.navigate("SignIn")}
         />
         <View style={styles.pills}>
           {PILLS.map((pill) => (

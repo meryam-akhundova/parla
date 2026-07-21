@@ -10,6 +10,8 @@ import { OnboardingOption } from "./OnboardingOption";
 import { StepRow } from "./StepRow";
 import { colors, spacing, fontSize, fontWeight } from "../../theme/theme";
 
+import { useAuthStore } from "../../store/authStore";
+
 const GOALS = [
   {
     id: "connect",
@@ -41,6 +43,8 @@ export function OnboardingGoalScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const insets = useSafeAreaInsets();
   const [selectedGoal, setSelectedGoal] = useState<string>(GOALS[0].id);
+
+  const setDraft = useAuthStore((s) => s.setDraft);
 
   return (
     <View
@@ -74,7 +78,10 @@ export function OnboardingGoalScreen() {
       <View style={styles.footer}>
         <Button
           label="continue"
-          onPress={() => navigation.navigate("OnboardingPace")}
+          onPress={() => {
+            setDraft({ goal: selectedGoal });
+            navigation.navigate("OnboardingPace");
+          }}
         />
       </View>
     </View>

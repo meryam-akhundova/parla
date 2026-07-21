@@ -11,6 +11,8 @@ import { OnboardingOption } from "./OnboardingOption";
 import { StepRow } from "./StepRow";
 import { colors, spacing, fontSize, fontWeight } from "../../theme/theme";
 
+import { useAuthStore } from "../../store/authStore";
+
 const PACE_OPTIONS = [
   {
     id: "quick",
@@ -37,6 +39,8 @@ export function OnboardingPaceScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const insets = useSafeAreaInsets();
   const [selectedPace, setSelectedPace] = useState<string>("steady");
+
+  const setDraft = useAuthStore((s) => s.setDraft);
 
   return (
     <View
@@ -73,7 +77,10 @@ export function OnboardingPaceScreen() {
       <View style={styles.footer}>
         <Button
           label="continue"
-          onPress={() => navigation.navigate("OnboardingFirstWord")}
+          onPress={() => {
+            setDraft({ pace: selectedPace });
+            navigation.navigate("OnboardingFirstWord");
+          }}
         />
       </View>
     </View>

@@ -7,9 +7,15 @@ import type { MainTabNavigationProp } from "../navigation/types";
 import { LessonCard } from "../components/LessonCard";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
+import { useAuthStore } from "../store/authStore";
+
 export function HomeScreen() {
   const navigation = useNavigation<MainTabNavigationProp>();
   const insets = useSafeAreaInsets();
+  const profile = useAuthStore((s) => s.profile);
+
+  const name = profile?.display_name?.trim() || "you";
+  const language = profile?.language ?? "turkish";
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
@@ -19,10 +25,10 @@ export function HomeScreen() {
       >
         <View style={styles.header}>
           <View style={styles.headerText}>
-            <Text style={styles.eyebrow}>monday · turkish</Text>
-            <Text style={styles.greeting}>
-              good morning, sofia <Text style={styles.spark}>✦</Text>
-            </Text>
+          <Text style={styles.eyebrow}>monday · {language}</Text>
+          <Text style={styles.greeting}>
+            good morning, {name} <Text style={styles.spark}>✦</Text>
+          </Text>
           </View>
           <View style={styles.avatar}>
             <Text style={styles.avatarEmoji}>👩</Text>

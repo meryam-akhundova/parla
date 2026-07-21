@@ -86,7 +86,15 @@ export function QuizScreen() {
       ) : null}
 
       <View style={styles.footer}>
-        <Button label="next →" onPress={() => navigation.navigate("Main")} />
+        <Button
+          label="next →"
+          onPress={() =>
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Main" }],
+            })
+          }
+        />
       </View>
     </View>
   );

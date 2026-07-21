@@ -2,6 +2,15 @@ import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
+import { Button } from "../components/Button";
+
+import { useAuthStore } from "../store/authStore";
+
+const PACE_LABELS: Record<string, string> = {
+  quick: "quick spark",
+  steady: "steady glow",
+  full: "full shine",
+};
 
 const STATS = [
   { num: "12", label: "day streak" },
@@ -19,6 +28,13 @@ const BADGES = [
 
 export function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const profile = useAuthStore((s) => s.profile);
+  const signOut = useAuthStore((s) => s.signOut);
+
+  const name = profile?.display_name?.trim() || "you";
+  const language = profile?.language ?? "turkish";
+  const paceKey = profile?.pace ?? "steady";
+  const paceLabel = PACE_LABELS[paceKey] ?? paceKey;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
@@ -30,10 +46,10 @@ export function ProfileScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarEmoji}>👩</Text>
           </View>
-          <Text style={styles.name}>sofia</Text>
-          <Text style={styles.meta}>learning turkish · since march 2026</Text>
+          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.meta}>learning {language}</Text>
           <View style={styles.pacePill}>
-            <Text style={styles.paceText}>✦ steady glow</Text>
+            <Text style={styles.paceText}>✦ {paceLabel}</Text>
           </View>
         </View>
 
@@ -80,6 +96,9 @@ export function ProfileScreen() {
               </Text>
             </View>
           ))}
+        </View>
+        <View style={styles.signOut}>
+          <Button label="sign out" variant="ghost" onPress={() => signOut()} />
         </View>
       </ScrollView>
     </View>
@@ -245,5 +264,9 @@ const styles = StyleSheet.create({
   },
   badgeLabelLocked: {
     color: colors.textMuted,
+  },
+  signOut: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
   },
 });

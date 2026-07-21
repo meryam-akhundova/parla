@@ -1,8 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
-import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { RootNavigationProp } from "../../navigation/types";
 import { Button } from "../../components/Button";
 import { HintBox } from "../../components/HintBox";
 import { WordCard } from "../../components/WordCard";
@@ -10,17 +8,27 @@ import { StepRow } from "./StepRow";
 import { mockSlangWords } from "../../data/mockSlang";
 import { colors, spacing, fontSize, fontWeight } from "../../theme/theme";
 
+import { useState } from "react";
+import { useAuthStore } from "../../store/authStore";
+
 export function OnboardingFirstWordScreen() {
-  const navigation = useNavigation<RootNavigationProp>();
+  const saveOnboarding = useAuthStore((s) => s.saveOnboarding);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
   const insets = useSafeAreaInsets();
   const word = mockSlangWords[0];
 
-  const finishOnboarding = () => {
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Main" }],
-    });
-  };
+  const finishOnboarding = async () => {
+  setError(null);
+  setLoading(true);
+  const err = await saveOnboarding();
+  setLoading(false);
+  if (err) {
+    setError(err);
+    return;
+  }
+};
 
   return (
     <View
@@ -53,7 +61,11 @@ export function OnboardingFirstWordScreen() {
       <HintBox message={word.culturalNote} />
 
       <View style={styles.footer}>
-        <Button label="start my first lesson" onPress={finishOnboarding} />
+      <Button
+        label={loading ? "saving…" : "start my first lesson"}
+        onPress={finishOnboarding}
+      />
+      {error ? <Text style={{ color: colors.errorStrong }}>{error}</Text> : null}
       </View>
     </View>
   );

@@ -1,0 +1,98 @@
+import { create } from "zustand";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
+
+type Profile = {
+  id: string;
+  display_name: string | null;
+  language: string | null;
+  goal: string | null;
+  pace: string | null;
+  onboarding_completed: boolean;
+};
+
+type OnboardingDraft = {
+  language: string;
+  goal: string;
+  pace: string;
+};
+
+type AuthState = {
+  session: Session | null;
+  profile: Profile | null;
+  initialized: boolean;
+  draft: OnboardingDraft;
+  profileLoaded: boolean;
+  setSession: (session: Session | null) => void;
+  setInitialized: (value: boolean) => void;
+  setDraft: (partial: Partial<OnboardingDraft>) => void;
+  loadProfile: () => Promise<void>;
+  signUp: (email: string, password: string, displayName: string) => Promise<string | null>;
+  signIn: (email: string, password: string) => Promise<string | null>;
+  signOut: () => Promise<void>;
+  saveOnboarding: () => Promise<string | null>;
+};
+
+export const useAuthStore = create<AuthState>((set, get) => ({
+  session: null,
+  profile: null,
+  initialized: false,
+  draft: { language: "turkish", goal: "connect", pace: "steady" },
+  profileLoaded: false,
+
+  setSession: (session) => set({ session }),
+  setInitialized: (initialized) => set({ initialized }),
+  setDraft: (partial) => set({ draft: { ...get().draft, ...partial } }),
+
+  loadProfile: async () => {
+    const userId = get().session?.user.id;
+    if (!userId) {
+      set({ profile: null, profileLoaded: true });
+      return;
+    }
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    set({ profile: data, profileLoaded: true });
+  },
+
+  signUp: async (email, password, displayName) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { display_name: displayName } },
+    });
+    return error?.message ?? null; // null = success
+  },
+
+  signIn: async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return error?.message ?? null;
+  },
+
+  signOut: async () => {
+    await supabase.auth.signOut();
+    set({ session: null, profile: null, profileLoaded: false });
+  },
+
+  saveOnboarding: async () => {
+    const userId = get().session?.user.id;
+    if (!userId) return "Not signed in";
+    const { draft } = get();
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        language: draft.language,
+        goal: draft.goal,
+        pace: draft.pace,
+        onboarding_completed: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+    if (error) return error.message;
+    await get().loadProfile();
+    return null;
+  },
+}));

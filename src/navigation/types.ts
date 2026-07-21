@@ -12,6 +12,8 @@ export type MainTabParamList = {
 
 export type RootStackParamList = {
   Splash: undefined;
+  SignIn: undefined;
+  SignUp: undefined;
   OnboardingLanguage: undefined;
   OnboardingGoal: undefined;
   OnboardingPace: undefined;

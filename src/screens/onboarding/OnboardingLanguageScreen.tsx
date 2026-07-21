@@ -9,6 +9,8 @@ import { HintBox } from "../../components/HintBox";
 import { StepRow } from "./StepRow";
 import { colors, spacing, radius, fontSize, fontWeight } from "../../theme/theme";
 
+import { useAuthStore } from "../../store/authStore";
+
 const LANGUAGES = [
   {
     id: "turkish",
@@ -44,6 +46,8 @@ export function OnboardingLanguageScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState("turkish");
+
+  const setDraft = useAuthStore((s) => s.setDraft);
 
   return (
     <View
@@ -88,7 +92,10 @@ export function OnboardingLanguageScreen() {
       <View style={styles.footer}>
         <Button
           label="continue"
-          onPress={() => navigation.navigate("OnboardingGoal")}
+          onPress={() => {
+            setDraft({ language: selected });
+            navigation.navigate("OnboardingGoal");
+          }}
         />
       </View>
     </View>
