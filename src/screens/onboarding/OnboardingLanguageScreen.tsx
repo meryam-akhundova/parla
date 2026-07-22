@@ -94,7 +94,7 @@ export function OnboardingLanguageScreen() {
           label="continue"
           onPress={() => {
             setDraft({ language: selected });
-            navigation.navigate("OnboardingGoal");
+            navigation.navigate("OnboardingGender");
           }}
         />
       </View>

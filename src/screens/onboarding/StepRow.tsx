@@ -2,11 +2,11 @@ import { View, StyleSheet } from "react-native";
 import { colors, spacing } from "../../theme/theme";
 
 interface StepRowProps {
-  currentStep: number; // 0–3
+  currentStep: number; // 0–4
   totalSteps?: number;
 }
 
-export function StepRow({ currentStep, totalSteps = 4 }: StepRowProps) {
+export function StepRow({ currentStep, totalSteps = 5 }: StepRowProps) {
   return (
     <View style={styles.row}>
       {Array.from({ length: totalSteps }).map((_, index) => (

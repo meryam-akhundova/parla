@@ -1,3 +1,4 @@
+import { useCallback, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,18 +7,105 @@ import {
   Pressable,
   StyleSheet,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
 import { BubbleLeft } from "../components/BubbleLeft";
 import { BubbleRight } from "../components/BubbleRight";
-import { NaturalnessBadge } from "../components/NaturalnessBadge";
+import { chatWithZeynep, type ChatTurn } from "../lib/chat";
+import { useAuthStore } from "../store/authStore";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
-const SUGGESTIONS = ["tabii ki kanka", "haklısın, gel bir kahve iç"];
+type UiMessage = {
+  id: string;
+  role: "zeynep" | "you";
+  text: string;
+};
+
+const SUGGESTIONS = [
+  "tabii ki kanka",
+  "haklısın, gel bir kahve iç",
+  "yok artık",
+];
+
+const OPENERS = [
+  "ya bugün çok yoruldum, tamamen bittim — jefa son dakika iş yağdırdı",
+  "kanka bir kahve şart, gün berbat geçti",
+  "duydun mu, yarın plan iptal olmuş ya",
+  "aklıma takıldı — sence 'aynen' her yerde olur mu?",
+  "ya bu trafikte eridim, sen neredesin?",
+  "bir şey soracağım: 'yok artık' ne zaman fazla kaçar?",
+];
+
+function pickOpener() {
+  return OPENERS[Math.floor(Math.random() * OPENERS.length)];
+}
 
 export function ChatScreen() {
   const insets = useSafeAreaInsets();
+  const profile = useAuthStore((s) => s.profile);
+  const [messages, setMessages] = useState<UiMessage[]>(() => [
+    { id: "opener", role: "zeynep", text: pickOpener() },
+  ]);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      setMessages((prev) => {
+        const onlyOpener = prev.length === 1 && prev[0]?.id === "opener";
+        if (!onlyOpener) return prev;
+        return [{ id: "opener", role: "zeynep", text: pickOpener() }];
+      });
+    }, []),
+  );
+
+  const toHistory = (msgs: UiMessage[]): ChatTurn[] =>
+    msgs.map((m) => ({
+      role: m.role === "zeynep" ? "assistant" : "user",
+      content: m.text,
+    }));
+
+  const send = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || sending) return;
+
+    const youMsg: UiMessage = {
+      id: `${Date.now()}-you`,
+      role: "you",
+      text: trimmed,
+    };
+
+    setMessages((prev) => [...prev, youMsg]);
+    setDraft("");
+    setError(null);
+    setSending(true);
+
+    const { reply, error: chatError } = await chatWithZeynep(
+      trimmed,
+      toHistory(messages),
+      {
+        gender: profile?.gender ?? "neutral",
+        displayName: profile?.display_name,
+      },
+    );
+
+    setSending(false);
+
+    if (chatError || !reply) {
+      setError(chatError ?? "No reply");
+      return;
+    }
+
+    setMessages((prev) => [
+      ...prev,
+      { id: `${Date.now()}-zeynep`, role: "zeynep", text: reply },
+    ]);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+  };
 
   return (
     <View
@@ -44,38 +132,48 @@ export function ChatScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.thread}
         contentContainerStyle={styles.threadContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.timestamp}>today 14:32</Text>
-
-        <BubbleLeft text="ya abi bugün çok yoruldum, tamamen bittim" />
-        <BubbleRight text="neta? ne oldu, anlat bakalım" />
-        <NaturalnessBadge message='natural — "anlat bakalım" sounds very local' />
-
-        <BubbleLeft text="jefa beni son dakika bir sürü iş verdi, çıldırdım ya" />
-        <BubbleRight text="yok artık, bu hiç adil değil kanka" />
-        <NaturalnessBadge message='great use of "yok artık" — perfect for outrage' />
-
-        <BubbleLeft text="aynen ya... neyse mola verelim mi?" />
+        <Text style={styles.timestamp}>today</Text>
+        {messages.map((m) =>
+          m.role === "zeynep" ? (
+            <BubbleLeft key={m.id} text={m.text} />
+          ) : (
+            <BubbleRight key={m.id} text={m.text} />
+          ),
+        )}
+        {sending ? (
+          <Text style={styles.timestamp}>zeynep is typing…</Text>
+        ) : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </ScrollView>
 
       <View style={styles.composer}>
         <View style={styles.suggestions}>
           {SUGGESTIONS.map((s) => (
-            <View key={s} style={styles.chip}>
+            <Pressable key={s} style={styles.chip} onPress={() => void send(s)}>
               <Text style={styles.chipText}>{s}</Text>
-            </View>
+            </Pressable>
           ))}
         </View>
         <View style={styles.inputRow}>
           <TextInput
+            value={draft}
+            onChangeText={setDraft}
             placeholder="reply in turkish..."
             placeholderTextColor={colors.textMuted}
             style={styles.input}
+            editable={!sending}
+            onSubmitEditing={() => void send(draft)}
           />
-          <Pressable style={styles.send}>
+          <Pressable
+            style={[styles.send, sending && styles.sendDisabled]}
+            onPress={() => void send(draft)}
+            disabled={sending}
+          >
             <Feather name="send" size={16} color={colors.primaryLight} />
           </Pressable>
         </View>
@@ -139,6 +237,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: spacing.xs,
   },
+  errorText: {
+    color: colors.errorStrong,
+    fontSize: fontSize.small,
+    marginTop: spacing.sm,
+  },
   composer: {
     borderTopWidth: 0.5,
     borderTopColor: colors.borderLight,
@@ -183,5 +286,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
+  },
+  sendDisabled: {
+    opacity: 0.5,
   },
 });

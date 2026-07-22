@@ -94,7 +94,7 @@ export function OnboardingFirstWordScreen() {
         },
       ]}
     >
-      <StepRow currentStep={3} />
+      <StepRow currentStep={4} />
 
       <View style={styles.header}>
         <Text style={styles.sparkle}>✦  ✦  ✦</Text>

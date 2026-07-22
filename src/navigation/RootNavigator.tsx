@@ -12,6 +12,7 @@ import { SplashScreen } from "../screens/onboarding/SplashScreen";
 import { SignInScreen } from "../screens/auth/SignInScreen";
 import { SignUpScreen } from "../screens/auth/SignUpScreen";
 import { OnboardingLanguageScreen } from "../screens/onboarding/OnboardingLanguageScreen";
+import { OnboardingGenderScreen } from "../screens/onboarding/OnboardingGenderScreen";
 import { OnboardingGoalScreen } from "../screens/onboarding/OnboardingGoalScreen";
 import { OnboardingPaceScreen } from "../screens/onboarding/OnboardingPaceScreen";
 import { OnboardingFirstWordScreen } from "../screens/onboarding/OnboardingFirstWordScreen";
@@ -52,6 +53,10 @@ export default function RootNavigator() {
             <Stack.Screen
               name="OnboardingLanguage"
               component={OnboardingLanguageScreen}
+            />
+            <Stack.Screen
+              name="OnboardingGender"
+              component={OnboardingGenderScreen}
             />
             <Stack.Screen name="OnboardingGoal" component={OnboardingGoalScreen} />
             <Stack.Screen name="OnboardingPace" component={OnboardingPaceScreen} />

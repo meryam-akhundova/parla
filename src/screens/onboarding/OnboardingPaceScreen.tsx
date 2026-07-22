@@ -52,7 +52,7 @@ export function OnboardingPaceScreen() {
         },
       ]}
     >
-      <StepRow currentStep={2} />
+      <StepRow currentStep={3} />
 
       <Text style={styles.sparkle}>✦  ✦  ✦</Text>
       <Text style={styles.title}>how much time?</Text>

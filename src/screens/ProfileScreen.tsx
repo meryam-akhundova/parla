@@ -1,16 +1,22 @@
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 import { Button } from "../components/Button";
 
-import { useAuthStore } from "../store/authStore";
+import { useAuthStore, type UserGender } from "../store/authStore";
 
 const PACE_LABELS: Record<string, string> = {
   quick: "quick spark",
   steady: "steady glow",
   full: "full shine",
 };
+
+const GENDERS: { id: UserGender; label: string }[] = [
+  { id: "female", label: "she / her" },
+  { id: "male", label: "he / him" },
+  { id: "neutral", label: "they / them" },
+];
 
 const BADGES = [
   { icon: "✦", label: "first shine", earned: true },
@@ -24,11 +30,13 @@ export function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
+  const updateGender = useAuthStore((s) => s.updateGender);
 
   const name = profile?.display_name?.trim() || "you";
   const language = profile?.language ?? "turkish";
   const paceKey = profile?.pace ?? "steady";
   const paceLabel = PACE_LABELS[paceKey] ?? paceKey;
+  const gender = profile?.gender ?? "neutral";
 
   const streakDays = profile?.streak_days ?? 0;
   const shineScore = profile?.shine_score ?? 0;
@@ -64,6 +72,29 @@ export function ProfileScreen() {
               <Text style={styles.statLabel}>{stat.label}</Text>
             </View>
           ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>ADDRESS ME AS</Text>
+        <View style={styles.genderRow}>
+          {GENDERS.map((g) => {
+            const selected = gender === g.id;
+            return (
+              <Pressable
+                key={g.id}
+                style={[styles.genderChip, selected && styles.genderChipSelected]}
+                onPress={() => void updateGender(g.id)}
+              >
+                <Text
+                  style={[
+                    styles.genderChipText,
+                    selected && styles.genderChipTextSelected,
+                  ]}
+                >
+                  {g.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <Text style={styles.sectionLabel}>THIS WEEK</Text>
@@ -163,6 +194,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  genderRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  genderChip: {
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surface,
+  },
+  genderChipSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  genderChipText: {
+    fontSize: fontSize.small,
+    color: colors.textSecondary,
+  },
+  genderChipTextSelected: {
+    color: colors.primaryText,
+    fontWeight: fontWeight.medium,
   },
   stat: {
     flex: 1,

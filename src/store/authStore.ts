@@ -2,12 +2,15 @@ import { create } from "zustand";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
+export type UserGender = "female" | "male" | "neutral";
+
 type Profile = {
   id: string;
   display_name: string | null;
   language: string | null;
   goal: string | null;
   pace: string | null;
+  gender: UserGender | null;
   onboarding_completed: boolean;
   streak_days: number;
   shine_score: number;
@@ -18,6 +21,7 @@ type OnboardingDraft = {
   language: string;
   goal: string;
   pace: string;
+  gender: UserGender;
 };
 
 type AuthState = {
@@ -35,13 +39,19 @@ type AuthState = {
   signOut: () => Promise<void>;
   saveOnboarding: () => Promise<string | null>;
   awardQuizSuccess: () => Promise<string | null>;
+  updateGender: (gender: UserGender) => Promise<string | null>;
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   profile: null,
   initialized: false,
-  draft: { language: "turkish", goal: "connect", pace: "steady" },
+  draft: {
+    language: "turkish",
+    goal: "connect",
+    pace: "steady",
+    gender: "neutral",
+  },
   profileLoaded: false,
 
   setSession: (session) => set({ session }),
@@ -91,7 +101,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         language: draft.language,
         goal: draft.goal,
         pace: draft.pace,
+        gender: draft.gender,
         onboarding_completed: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+    if (error) return error.message;
+    await get().loadProfile();
+    return null;
+  },
+
+  updateGender: async (gender) => {
+    const userId = get().session?.user.id;
+    if (!userId) return "Not signed in";
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        gender,
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId);
