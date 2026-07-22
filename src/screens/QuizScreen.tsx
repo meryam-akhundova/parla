@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
-import type { RootNavigationProp } from "../navigation/types";
+import type { RootNavigationProp, RootStackParamList } from "../navigation/types";
 import { Tag } from "../components/Tag";
 import { HintBox } from "../components/HintBox";
 import { QuizOption } from "../components/QuizOption";
@@ -17,12 +17,14 @@ import { useAuthStore } from "../store/authStore";
 
 export function QuizScreen() {
   const navigation = useNavigation<RootNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, "Quiz">>();
+  const wordId = route.params?.wordId;
   const insets = useSafeAreaInsets();
   const [quiz, setQuiz] = useState<MeaningQuiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  
+
   const awardQuizSuccess = useAuthStore((s) => s.awardQuizSuccess);
 
   useEffect(() => {
@@ -38,9 +40,13 @@ export function QuizScreen() {
         return;
       }
 
-      const next = buildMeaningQuiz(data);
+      const next = buildMeaningQuiz(data, { targetId: wordId });
       if (!next) {
-        setError("Need at least 2 slang words for a quiz");
+        setError(
+          wordId
+            ? "Could not build a quiz for that word"
+            : "Need at least 2 slang words for a quiz",
+        );
         setLoading(false);
         return;
       }
@@ -52,7 +58,7 @@ export function QuizScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [wordId]);
 
   if (loading) {
     return (

@@ -21,7 +21,7 @@ export type RootStackParamList = {
   OnboardingFirstWord: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   SlangDrop: undefined;
-  Quiz: undefined;
+  Quiz: { wordId?: string } | undefined;
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;

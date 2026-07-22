@@ -25,13 +25,30 @@ function pickRandom<T>(items: T[], count: number): T[] {
   return copy.slice(0, count);
 }
 
-export function buildMeaningQuiz(words: SlangWord[]): MeaningQuiz | null {
+export function buildMeaningQuiz(
+  words: SlangWord[],
+  options?: { targetId?: string },
+): MeaningQuiz | null {
   if (words.length < 2) return null; // need at least 1 distractor; ideally 3+
 
-  const [word, ...rest] = pickRandom(words, Math.min(3, words.length));
-  const distractors = rest.slice(0, 2);
+  let word: SlangWord;
+  let distractors: SlangWord[];
 
-  const options: QuizOption[] = pickRandom(
+  if (options?.targetId) {
+    const target = words.find((w) => w.id === options.targetId);
+    if (!target) return null;
+    word = target;
+    distractors = pickRandom(
+      words.filter((w) => w.id !== target.id),
+      Math.min(2, words.length - 1),
+    );
+  } else {
+    const picked = pickRandom(words, Math.min(3, words.length));
+    word = picked[0];
+    distractors = picked.slice(1, 3);
+  }
+
+  const quizOptions: QuizOption[] = pickRandom(
     [
       { id: "correct", label: word.meaning, correct: true },
       ...distractors.map((d, i) => ({
@@ -49,6 +66,6 @@ export function buildMeaningQuiz(words: SlangWord[]): MeaningQuiz | null {
     prompt: "pick the closest meaning",
     scenarioLabel: "📱 in a message:",
     scenarioText: `"${word.exampleMessage}"`,
-    options,
+    options: quizOptions,
   };
 }

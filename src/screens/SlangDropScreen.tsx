@@ -34,8 +34,14 @@ export function SlangDropScreen() {
         return;
       }
 
-      setWord(data[0] ?? null);
-      if (!data[0]) setError("No slang words yet");
+      if (data.length === 0) {
+        setError("No slang words yet");
+        setLoading(false);
+        return;
+      }
+
+      const pick = data[Math.floor(Math.random() * data.length)];
+      setWord(pick);
       setLoading(false);
     })();
 
@@ -118,7 +124,7 @@ export function SlangDropScreen() {
 
       <Button
         label="practice this word"
-        onPress={() => navigation.navigate("Quiz")}
+        onPress={() => navigation.navigate("Quiz", { wordId: word.id })}
       />
     </View>
   );

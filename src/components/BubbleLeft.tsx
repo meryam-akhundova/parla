@@ -1,15 +1,24 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { colors, radius, fontSize } from "../theme/theme";
 
 interface BubbleLeftProps {
   text: string;
+  onPress?: () => void;
 }
 
-export function BubbleLeft({ text }: BubbleLeftProps) {
-  return (
+export function BubbleLeft({ text, onPress }: BubbleLeftProps) {
+  const content = (
     <View style={styles.bubble}>
       <Text style={styles.text}>{text}</Text>
     </View>
+  );
+
+  if (!onPress) return content;
+
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityHint="explain slang">
+      {content}
+    </Pressable>
   );
 }
 

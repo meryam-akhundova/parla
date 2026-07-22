@@ -2,7 +2,6 @@ import { create } from "zustand";
 import {
   getPersona,
   pickOpener,
-  type Persona,
   type PersonaId,
 } from "../data/personas";
 
@@ -10,15 +9,20 @@ export type UiMessage =
   | { id: string; role: "them" | "you"; text: string }
   | { id: string; role: "badge"; text: string };
 
-function starterMessages(persona: Persona): UiMessage[] {
-  return [{ id: `opener-${persona.id}`, role: "them", text: pickOpener(persona) }];
+export function makeOpenerMessage(personaId: PersonaId): UiMessage {
+  const persona = getPersona(personaId);
+  return {
+    id: `opener-${personaId}-${Date.now()}`,
+    role: "them",
+    text: pickOpener(persona),
+  };
 }
 
 function emptyThreads(): Record<PersonaId, UiMessage[]> {
   return {
-    zeynep: starterMessages(getPersona("zeynep")),
-    mehmet: starterMessages(getPersona("mehmet")),
-    ayse: starterMessages(getPersona("ayse")),
+    zeynep: [],
+    mehmet: [],
+    ayse: [],
   };
 }
 
@@ -31,6 +35,7 @@ type ChatUiState = {
     updater: UiMessage[] | ((prev: UiMessage[]) => UiMessage[]),
     personaId?: PersonaId,
   ) => void;
+  resetThread: (personaId?: PersonaId) => void;
 };
 
 export const useChatStore = create<ChatUiState>((set, get) => ({
@@ -42,12 +47,23 @@ export const useChatStore = create<ChatUiState>((set, get) => ({
   setMessages: (updater, personaId) => {
     const { selectedPersona, threads } = get();
     const id = personaId ?? selectedPersona;
-    const prev = threads[id] ?? starterMessages(getPersona(id));
+    const prev = threads[id] ?? [];
     const next = typeof updater === "function" ? updater(prev) : updater;
     set({
       threads: {
         ...threads,
         [id]: next,
+      },
+    });
+  },
+
+  resetThread: (personaId) => {
+    const { selectedPersona, threads } = get();
+    const id = personaId ?? selectedPersona;
+    set({
+      threads: {
+        ...threads,
+        [id]: [],
       },
     });
   },

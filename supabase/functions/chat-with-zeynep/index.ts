@@ -2,6 +2,12 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 type PersonaId = "zeynep" | "mehmet" | "ayse";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
 const OUTPUT_FORMAT = `
 Always respond with ONLY a raw JSON object. Do NOT wrap it in markdown or code fences. No \`\`\`json. No other text.
 Exact shape:
@@ -12,6 +18,17 @@ Rules:
 - "feedback" is a separate tip for the learner (naturalness, better wording, register). Use null if their message was already fine.
 - Keep feedback to one short sentence when present.
 - If the persona is Mehmet and the learner used Istanbul Gen-Z slang (kanka/aynen/jefa style), feedback may briefly note a more Anatolian/natural alternative.`;
+
+const EXPLAIN_SYSTEM = `You help language learners understand Turkish chat slang and abbreviations.
+Given one Turkish WhatsApp-style message, extract slang, abbreviations, particles, and culturally loaded phrases.
+Respond with ONLY raw JSON (no markdown fences):
+{"items":[{"term":"<exact form from the message>","meaning":"<short english gloss>","note":"<one short tip on when/how it's used>"}]}
+
+Rules:
+- Only include terms that need explaining for a learner (skip plain words like "sen", "biraz", "ama" unless slangy).
+- Prefer 1–6 items. If nothing slangy, return {"items":[]}.
+- Keep meanings/notes concise.
+- If the user lists "already explained" terms, do NOT repeat those (or close variants). Only return additional unknowns.`;
 
 const PERSONA_SYSTEM: Record<PersonaId, string> = {
   zeynep: `You are Zeynep texting on WhatsApp/iMessage with a friend. This is a phone chat, not an in-person meeting.
@@ -77,11 +94,16 @@ function genderInstructions(
   return `The learner prefers gender-neutral address.${nameBit} Use neutral forms (sen, kanka). Avoid abi/abla.`;
 }
 
-function parseModelOutput(raw: string): { reply: string; feedback: string | null } {
-  let text = raw.trim();
+function stripFences(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+}
 
-  // Strip markdown code fences if the model wrapped the JSON
-  text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+function parseModelOutput(raw: string): { reply: string; feedback: string | null } {
+  let text = stripFences(raw);
 
   const tryParse = (slice: string) => {
     const parsed = JSON.parse(slice) as {
@@ -102,7 +124,6 @@ function parseModelOutput(raw: string): { reply: string; feedback: string | null
     if (start >= 0 && end > start) {
       const result = tryParse(text.slice(start, end + 1));
       if (result) {
-        // If reply itself is still JSON (double-wrapped), unwrap once more
         if (result.reply.includes('"reply"') && result.reply.trim().startsWith("{")) {
           const inner = tryParse(result.reply);
           if (inner) return inner;
@@ -119,15 +140,57 @@ function parseModelOutput(raw: string): { reply: string; feedback: string | null
   return { reply: text, feedback: null };
 }
 
+function parseExplainOutput(
+  raw: string,
+): { term: string; meaning: string; note: string }[] {
+  let text = stripFences(raw);
+  try {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) text = text.slice(start, end + 1);
+    const parsed = JSON.parse(text) as {
+      items?: { term?: unknown; meaning?: unknown; note?: unknown }[];
+    };
+    if (!Array.isArray(parsed.items)) return [];
+    return parsed.items
+      .map((item) => ({
+        term: typeof item.term === "string" ? item.term.trim() : "",
+        meaning: typeof item.meaning === "string" ? item.meaning.trim() : "",
+        note: typeof item.note === "string" ? item.note.trim() : "",
+      }))
+      .filter((item) => item.term && item.meaning);
+  } catch {
+    return [];
+  }
+}
+
+async function callAnthropic(
+  apiKey: string,
+  system: string,
+  userMessage: string,
+  maxTokens: number,
+) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: userMessage }],
+    }),
+  });
+  const data = await res.json();
+  return { res, data };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers":
-          "authorization, x-client-info, apikey, content-type",
-      },
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -136,17 +199,47 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Missing ANTHROPIC_API_KEY" }, { status: 500 });
     }
 
-    const {
-      message,
-      history = [],
-      persona: rawPersona,
-      gender,
-      displayName,
-    } = await req.json();
+    const body = await req.json();
+    const { message, action } = body;
 
     if (!message || typeof message !== "string") {
       return Response.json({ error: "message is required" }, { status: 400 });
     }
+
+    // Tap-to-explain slang in a bubble (unknowns only — app already matched slang_words)
+    if (action === "explain") {
+      const knownTerms = Array.isArray(body.knownTerms)
+        ? body.knownTerms.filter((t: unknown) => typeof t === "string" && t.trim())
+        : [];
+      const knownBlock =
+        knownTerms.length > 0
+          ? `\n\nAlready explained (do not repeat): ${knownTerms.join(", ")}`
+          : "";
+      const { res, data } = await callAnthropic(
+        apiKey,
+        EXPLAIN_SYSTEM,
+        `Explain slang/abbreviations in this message:\n\n${message}${knownBlock}`,
+        500,
+      );
+      if (!res.ok) {
+        return Response.json(
+          { error: data?.error?.message ?? "Anthropic error" },
+          { status: 502 },
+        );
+      }
+      const rawText =
+        data.content?.find((b: { type: string }) => b.type === "text")?.text ??
+        "";
+      const items = parseExplainOutput(rawText);
+      return Response.json({ items }, { headers: corsHeaders });
+    }
+
+    const {
+      history = [],
+      persona: rawPersona,
+      gender,
+      displayName,
+    } = body;
 
     const persona: PersonaId =
       rawPersona === "mehmet" || rawPersona === "ayse" || rawPersona === "zeynep"
@@ -198,9 +291,7 @@ Deno.serve(async (req) => {
 
     return Response.json(
       { reply, feedback },
-      {
-        headers: { "Access-Control-Allow-Origin": "*" },
-      },
+      { headers: corsHeaders },
     );
   } catch (e) {
     return Response.json(
