@@ -26,6 +26,7 @@ export function QuizScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const awardQuizSuccess = useAuthStore((s) => s.awardQuizSuccess);
+  const shineScore = useAuthStore((s) => s.profile?.shine_score ?? 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,17 +104,17 @@ export function QuizScreen() {
           <Feather name="x" size={18} color={colors.textMuted} />
         </Pressable>
         <View style={styles.xpTrack}>
-          <View style={[styles.xpFill, { width: "55%" }]} />
+          <View style={[styles.xpFill, { width: answered ? "100%" : "0%" }]} />
         </View>
         <View style={styles.streakPill}>
-          <Text style={styles.streakText}>12 ✦</Text>
+          <Text style={styles.streakText}>{shineScore} ✦</Text>
         </View>
       </View>
 
       <View style={styles.tags}>
         <Tag label="✦ slang drop" variant="purple" />
         <View style={styles.countPill}>
-          <Text style={styles.countText}>3 / 5</Text>
+          <Text style={styles.countText}>1 / 1</Text>
         </View>
       </View>
 
@@ -147,12 +148,7 @@ export function QuizScreen() {
       <View style={styles.footer}>
         <Button
           label="next →"
-          onPress={() =>
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Main" }],
-            })
-          }
+          onPress={() => navigation.pop(2)}
         />
       </View>
     </View>
