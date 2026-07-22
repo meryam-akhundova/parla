@@ -15,12 +15,13 @@ export function NaturalnessBadge({ message }: NaturalnessBadgeProps) {
 
 const styles = StyleSheet.create({
   badge: {
-    alignSelf: "flex-end",
+    alignSelf: "flex-start",
     maxWidth: "90%",
     backgroundColor: colors.tealBg,
     borderRadius: 10,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+    marginTop: -2,
     marginBottom: spacing.sm,
   },
   text: {

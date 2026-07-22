@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -7,103 +7,107 @@ import {
   Pressable,
   StyleSheet,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
 import { BubbleLeft } from "../components/BubbleLeft";
 import { BubbleRight } from "../components/BubbleRight";
-import { chatWithZeynep, type ChatTurn } from "../lib/chat";
+import { NaturalnessBadge } from "../components/NaturalnessBadge";
+import { TypingBubble } from "../components/TypingBubble";
+import { PERSONAS, getPersona, type PersonaId } from "../data/personas";
+import { chatWithPersona, type ChatTurn } from "../lib/chat";
 import { useAuthStore } from "../store/authStore";
+import { useChatStore, type UiMessage } from "../store/chatStore";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
-
-type UiMessage = {
-  id: string;
-  role: "zeynep" | "you";
-  text: string;
-};
-
-const SUGGESTIONS = [
-  "tabii ki kanka",
-  "haklısın, gel bir kahve iç",
-  "yok artık",
-];
-
-const OPENERS = [
-  "ya bugün çok yoruldum, tamamen bittim — jefa son dakika iş yağdırdı",
-  "kanka bir kahve şart, gün berbat geçti",
-  "duydun mu, yarın plan iptal olmuş ya",
-  "aklıma takıldı — sence 'aynen' her yerde olur mu?",
-  "ya bu trafikte eridim, sen neredesin?",
-  "bir şey soracağım: 'yok artık' ne zaman fazla kaçar?",
-];
-
-function pickOpener() {
-  return OPENERS[Math.floor(Math.random() * OPENERS.length)];
-}
 
 export function ChatScreen() {
   const insets = useSafeAreaInsets();
   const profile = useAuthStore((s) => s.profile);
-  const [messages, setMessages] = useState<UiMessage[]>(() => [
-    { id: "opener", role: "zeynep", text: pickOpener() },
-  ]);
+  const selectedPersona = useChatStore((s) => s.selectedPersona);
+  const setPersona = useChatStore((s) => s.setPersona);
+  const messages = useChatStore((s) => s.threads[s.selectedPersona]);
+  const setMessages = useChatStore((s) => s.setMessages);
+  const persona = getPersona(selectedPersona);
+
   const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
+  const [sendingFor, setSendingFor] = useState<PersonaId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const sending = sendingFor !== null;
 
-  useFocusEffect(
-    useCallback(() => {
-      setMessages((prev) => {
-        const onlyOpener = prev.length === 1 && prev[0]?.id === "opener";
-        if (!onlyOpener) return prev;
-        return [{ id: "opener", role: "zeynep", text: pickOpener() }];
-      });
-    }, []),
-  );
+  const selectPersona = (id: PersonaId) => {
+    if (id === selectedPersona) return;
+    setPersona(id);
+    setError(null);
+  };
 
   const toHistory = (msgs: UiMessage[]): ChatTurn[] =>
-    msgs.map((m) => ({
-      role: m.role === "zeynep" ? "assistant" : "user",
-      content: m.text,
-    }));
+    msgs
+      .filter((m): m is { id: string; role: "them" | "you"; text: string } =>
+        m.role === "them" || m.role === "you",
+      )
+      .map((m) => ({
+        role: m.role === "them" ? "assistant" : "user",
+        content: m.text,
+      }));
 
   const send = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
 
+    const personaId = selectedPersona;
+    const historySnapshot = toHistory(messages);
     const youMsg: UiMessage = {
       id: `${Date.now()}-you`,
       role: "you",
       text: trimmed,
     };
 
-    setMessages((prev) => [...prev, youMsg]);
+    setMessages((prev) => [...prev, youMsg], personaId);
     setDraft("");
     setError(null);
-    setSending(true);
+    setSendingFor(personaId);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
 
-    const { reply, error: chatError } = await chatWithZeynep(
+    const startedAt = Date.now();
+    const { reply, feedback, error: chatError } = await chatWithPersona(
       trimmed,
-      toHistory(messages),
+      historySnapshot,
       {
+        persona: personaId,
         gender: profile?.gender ?? "neutral",
         displayName: profile?.display_name,
       },
     );
 
-    setSending(false);
+    // Keep the typing bubble visible briefly so it feels like real messaging
+    const elapsed = Date.now() - startedAt;
+    const minTypingMs = 700 + Math.floor(Math.random() * 500);
+    if (elapsed < minTypingMs) {
+      await new Promise((r) => setTimeout(r, minTypingMs - elapsed));
+    }
+
+    setSendingFor(null);
 
     if (chatError || !reply) {
       setError(chatError ?? "No reply");
       return;
     }
 
-    setMessages((prev) => [
-      ...prev,
-      { id: `${Date.now()}-zeynep`, role: "zeynep", text: reply },
-    ]);
+    setMessages((prev) => {
+      const next: UiMessage[] = [
+        ...prev,
+        { id: `${Date.now()}-them`, role: "them", text: reply },
+      ];
+      if (feedback) {
+        next.push({
+          id: `${Date.now()}-badge`,
+          role: "badge",
+          text: feedback,
+        });
+      }
+      return next;
+    }, personaId);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
   };
 
@@ -118,17 +122,37 @@ export function ChatScreen() {
     >
       <View style={styles.topBar}>
         <View style={styles.topText}>
-          <Text style={styles.title}>chat with zeynep</Text>
-          <Text style={styles.status}>● casual · istanbul turkish</Text>
+          <Text style={styles.title}>chat with {persona.name}</Text>
+          <Text style={styles.status}>● {persona.status}</Text>
         </View>
         <Feather name="info" size={18} color={colors.textMuted} />
       </View>
 
+      <View style={styles.personaRow}>
+        {PERSONAS.map((p) => {
+          const selected = p.id === selectedPersona;
+          return (
+            <Pressable
+              key={p.id}
+              style={[styles.personaChip, selected && styles.personaChipSelected]}
+              onPress={() => selectPersona(p.id)}
+            >
+              <Text
+                style={[
+                  styles.personaChipText,
+                  selected && styles.personaChipTextSelected,
+                ]}
+              >
+                {p.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <View style={styles.scenario}>
         <Text style={styles.scenarioSpark}>✦</Text>
-        <Text style={styles.scenarioText}>
-          scenario: your friend is venting about a bad day
-        </Text>
+        <Text style={styles.scenarioText}>{persona.scenario}</Text>
       </View>
 
       <ScrollView
@@ -138,27 +162,20 @@ export function ChatScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.timestamp}>today</Text>
-        {messages.map((m) =>
-          m.role === "zeynep" ? (
-            <BubbleLeft key={m.id} text={m.text} />
-          ) : (
-            <BubbleRight key={m.id} text={m.text} />
-          ),
-        )}
-        {sending ? (
-          <Text style={styles.timestamp}>zeynep is typing…</Text>
-        ) : null}
+        {messages.map((m) => {
+          if (m.role === "badge") {
+            return <NaturalnessBadge key={m.id} message={m.text} />;
+          }
+          if (m.role === "them") {
+            return <BubbleLeft key={m.id} text={m.text} />;
+          }
+          return <BubbleRight key={m.id} text={m.text} />;
+        })}
+        {sendingFor === selectedPersona ? <TypingBubble /> : null}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </ScrollView>
 
       <View style={styles.composer}>
-        <View style={styles.suggestions}>
-          {SUGGESTIONS.map((s) => (
-            <Pressable key={s} style={styles.chip} onPress={() => void send(s)}>
-              <Text style={styles.chipText}>{s}</Text>
-            </Pressable>
-          ))}
-        </View>
         <View style={styles.inputRow}>
           <TextInput
             value={draft}
@@ -206,6 +223,32 @@ const styles = StyleSheet.create({
     fontSize: fontSize.label,
     color: colors.tealStrong,
   },
+  personaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: spacing.sm,
+  },
+  personaChip: {
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+    backgroundColor: colors.surface,
+  },
+  personaChipSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  personaChipText: {
+    fontSize: fontSize.label,
+    color: colors.textSecondary,
+  },
+  personaChipTextSelected: {
+    color: colors.primaryText,
+    fontWeight: fontWeight.medium,
+  },
   scenario: {
     flexDirection: "row",
     alignItems: "center",
@@ -246,22 +289,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: colors.borderLight,
     paddingTop: 10,
-  },
-  suggestions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 5,
-    marginBottom: spacing.sm,
-  },
-  chip: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.full,
-    paddingVertical: 5,
-    paddingHorizontal: 11,
-  },
-  chipText: {
-    fontSize: fontSize.label,
-    color: colors.primaryText,
   },
   inputRow: {
     flexDirection: "row",
