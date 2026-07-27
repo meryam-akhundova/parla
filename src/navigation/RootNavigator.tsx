@@ -6,8 +6,8 @@ import type { RootStackParamList } from "./types";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/theme";
 import { MainTabs } from "./MainTabs";
-import { QuizScreen } from "../screens/QuizScreen";
 import { SlangDropScreen } from "../screens/SlangDropScreen";
+import { VibeCheckScreen } from "../screens/VibeCheckScreen";
 import { SplashScreen } from "../screens/onboarding/SplashScreen";
 import { SignInScreen } from "../screens/auth/SignInScreen";
 import { SignUpScreen } from "../screens/auth/SignUpScreen";
@@ -70,7 +70,7 @@ export default function RootNavigator() {
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="SlangDrop" component={SlangDropScreen} />
-            <Stack.Screen name="Quiz" component={QuizScreen} />
+            <Stack.Screen name="VibeCheck" component={VibeCheckScreen} />
           </>
         )}
       </Stack.Navigator>

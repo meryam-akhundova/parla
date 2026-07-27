@@ -41,6 +41,7 @@ type AuthState = {
   signOut: () => Promise<void>;
   saveOnboarding: () => Promise<string | null>;
   awardQuizSuccess: () => Promise<string | null>;
+  awardSlangDropComplete: (count: number) => Promise<string | null>;
   updateGender: (gender: UserGender) => Promise<string | null>;
 };
 
@@ -150,6 +151,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .update({
         shine_score: profile.shine_score + 10,
         words_learned: profile.words_learned + 1,
+        streak_days: streak.streak_days,
+        last_active_date: streak.last_active_date,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+
+    if (error) return error.message;
+    await get().loadProfile();
+    return null;
+  },
+
+  awardSlangDropComplete: async (count) => {
+    const { session, profile } = get();
+    const userId = session?.user.id;
+    if (!userId || !profile) return "Not signed in";
+    if (count <= 0) return null;
+
+    const streak = nextStreak(profile.streak_days, profile.last_active_date);
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        shine_score: profile.shine_score + 10,
+        words_learned: profile.words_learned + count,
         streak_days: streak.streak_days,
         last_active_date: streak.last_active_date,
         updated_at: new Date().toISOString(),

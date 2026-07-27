@@ -5,20 +5,27 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
 import type { RootNavigationProp } from "../navigation/types";
-import { WordCard } from "../components/WordCard";
-import { HintBox } from "../components/HintBox";
-import { VibeMeter } from "../components/VibeMeter";
+import { FlipWordCard } from "../components/FlipWordCard";
+import { Tag } from "../components/Tag";
 import { Button } from "../components/Button";
 import { fetchSlangWords } from "../lib/slang";
+import { sessionSizeFromPace } from "../lib/sessionSize";
+import { pickSessionWords } from "../lib/pickSessionWords";
 import type { SlangWord } from "../data/types";
+import { useAuthStore } from "../store/authStore";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
 export function SlangDropScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const insets = useSafeAreaInsets();
-  
-  const [word, setWord] = useState<SlangWord | null>(null);
+  const pace = useAuthStore((s) => s.profile?.pace);
+  const awardSlangDropComplete = useAuthStore((s) => s.awardSlangDropComplete);
+
+  const [words, setWords] = useState<SlangWord[]>([]);
+  const [index, setIndex] = useState(0);
+  const [flipped, setFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,15 +47,36 @@ export function SlangDropScreen() {
         return;
       }
 
-      const pick = data[Math.floor(Math.random() * data.length)];
-      setWord(pick);
+      const size = sessionSizeFromPace(pace);
+      setWords(pickSessionWords(data, size));
       setLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [pace]);
+
+  const word = words[index] ?? null;
+  const total = words.length;
+  const isLast = index >= total - 1;
+
+  const finishSession = async () => {
+    if (finishing) return;
+    setFinishing(true);
+    await awardSlangDropComplete(total);
+    navigation.goBack();
+  };
+
+  const onNext = () => {
+    if (!flipped) return;
+    if (isLast) {
+      void finishSession();
+      return;
+    }
+    setIndex((i) => i + 1);
+    setFlipped(false);
+  };
 
   if (loading) {
     return (
@@ -57,7 +85,7 @@ export function SlangDropScreen() {
       </View>
     );
   }
-  
+
   if (error || !word) {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
@@ -83,48 +111,33 @@ export function SlangDropScreen() {
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Feather name="arrow-left" size={18} color={colors.textMuted} />
         </Pressable>
-        <Text style={styles.topTitle}>word detail</Text>
-        <Feather name="bookmark" size={18} color={colors.primary} />
+        <Text style={styles.topTitle}>slang drop</Text>
+        <View style={styles.countPill}>
+          <Text style={styles.countText}>
+            {index + 1} / {total}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.tags}>
+        <Tag label="✦ slang drop" variant="purple" />
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <WordCard
-          word={word.word}
-          romanization={word.romanization}
-          meaning={word.meaning}
-          exampleMessage={word.exampleMessage}
-          exampleTranslation={word.exampleTranslation}
-          category="✦ slang drop"
-          categoryVariant="purple"
+        <FlipWordCard
+          word={word}
+          flipped={flipped}
+          onFlip={() => setFlipped((f) => !f)}
         />
-
-        <HintBox message={word.culturalNote} />
-
-        <Text style={styles.sectionLabel}>VIBE METER</Text>
-        <VibeMeter
-          friends={word.vibeFriends}
-          strangers={word.vibeStrangers}
-          formal={word.vibeFormal}
-        />
-
-        <Text style={[styles.sectionLabel, styles.sectionSpaced]}>
-          SIMILAR WORDS
-        </Text>
-        <View style={styles.chipRow}>
-          {word.similarWords.map((similar) => (
-            <View key={similar} style={styles.chip}>
-              <Text style={styles.chipText}>{similar}</Text>
-            </View>
-          ))}
-        </View>
       </ScrollView>
 
       <Button
-        label="practice this word"
-        onPress={() => navigation.navigate("Quiz", { wordId: word.id })}
+        label={isLast ? "finish ✦" : "next →"}
+        onPress={onNext}
+        disabled={!flipped || finishing}
       />
     </View>
   );
@@ -140,7 +153,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   topTitle: {
     flex: 1,
@@ -148,33 +161,26 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
     color: colors.primaryDark,
   },
+  countPill: {
+    backgroundColor: colors.background,
+    borderRadius: radius.full,
+    paddingVertical: 2,
+    paddingHorizontal: spacing.sm,
+    justifyContent: "center",
+  },
+  countText: {
+    fontSize: fontSize.micro,
+    fontWeight: fontWeight.medium,
+    color: colors.textSecondary,
+  },
+  tags: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 14,
+  },
   scroll: {
     gap: spacing.md,
     paddingBottom: spacing.lg,
-  },
-  sectionLabel: {
-    fontSize: fontSize.micro,
-    fontWeight: fontWeight.medium,
-    color: colors.textMuted,
-    letterSpacing: 0.6,
-  },
-  sectionSpaced: {
-    marginTop: spacing.sm,
-  },
-  chipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  chip: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.full,
-    paddingVertical: 5,
-    paddingHorizontal: spacing.md,
-  },
-  chipText: {
-    fontSize: fontSize.small,
-    color: colors.primaryText,
   },
   centered: {
     flex: 1,

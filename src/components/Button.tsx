@@ -6,18 +6,26 @@ interface ButtonProps {
   label: string;
   onPress: () => void; // must be a function that returns nothing
   variant?: "primary" | "ghost"; // optional
+  disabled?: boolean;
 }
 
-export function Button({ label, onPress, variant = "primary" }: ButtonProps) {
+export function Button({
+  label,
+  onPress,
+  variant = "primary",
+  disabled = false,
+}: ButtonProps) {
   const isPrimary = variant === "primary";
 
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       style={({ pressed }) => [
         styles.base,
         isPrimary ? styles.primary : styles.ghost,
-        pressed && styles.pressed, // short-circuit evaluation
+        pressed && !disabled && styles.pressed,
+        disabled && styles.disabled,
       ]}
     >
       <Text
@@ -51,6 +59,9 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.85,
+  },
+  disabled: {
+    opacity: 0.45,
   },
   label: {
     fontWeight: fontWeight.medium,

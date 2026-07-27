@@ -1,32 +1,36 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
-import type { RootNavigationProp, RootStackParamList } from "../navigation/types";
+import type { RootNavigationProp } from "../navigation/types";
 import { Tag } from "../components/Tag";
 import { HintBox } from "../components/HintBox";
 import { QuizOption } from "../components/QuizOption";
 import { Button } from "../components/Button";
 import { fetchSlangWords } from "../lib/slang";
-import { buildMeaningQuiz, type MeaningQuiz } from "../lib/buildMeaningQuiz";
+import { sessionSizeFromPace } from "../lib/sessionSize";
+import { pickSessionWords } from "../lib/pickSessionWords";
+import { buildVibeQuiz, type VibeQuiz } from "../lib/buildVibeQuiz";
+import type { SlangWord } from "../data/types";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
-
 import { useAuthStore } from "../store/authStore";
 
-export function QuizScreen() {
+export function VibeCheckScreen() {
   const navigation = useNavigation<RootNavigationProp>();
-  const route = useRoute<RouteProp<RootStackParamList, "Quiz">>();
-  const wordId = route.params?.wordId;
   const insets = useSafeAreaInsets();
-  const [quiz, setQuiz] = useState<MeaningQuiz | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
+  const pace = useAuthStore((s) => s.profile?.pace);
   const awardQuizSuccess = useAuthStore((s) => s.awardQuizSuccess);
   const shineScore = useAuthStore((s) => s.profile?.shine_score ?? 0);
+
+  const [sessionWords, setSessionWords] = useState<SlangWord[]>([]);
+  const [pool, setPool] = useState<SlangWord[]>([]);
+  const [index, setIndex] = useState(0);
+  const [quiz, setQuiz] = useState<VibeQuiz | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,25 +45,72 @@ export function QuizScreen() {
         return;
       }
 
-      const next = buildMeaningQuiz(data, { targetId: wordId });
-      if (!next) {
-        setError(
-          wordId
-            ? "Could not build a quiz for that word"
-            : "Need at least 2 slang words for a quiz",
-        );
+      if (data.length < 1) {
+        setError("Need slang words for a vibe check");
         setLoading(false);
         return;
       }
 
-      setQuiz(next);
+      const size = sessionSizeFromPace(pace);
+      const picked = pickSessionWords(data, size);
+      setPool(data);
+      setSessionWords(picked);
+
+      const first = buildVibeQuiz(data, { targetId: picked[0]?.id });
+      if (!first) {
+        setError("Could not build a vibe check");
+        setLoading(false);
+        return;
+      }
+
+      setQuiz(first);
       setLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [wordId]);
+  }, [pace]);
+
+  const total = sessionWords.length;
+  const answered = selectedId !== null;
+  const isLast = index >= total - 1;
+  const progressPct = total > 0 ? ((index + (answered ? 1 : 0)) / total) * 100 : 0;
+
+  const optionState = (id: string, correct: boolean) => {
+    if (!answered) return "default" as const;
+    if (correct) return "correct" as const;
+    if (id === selectedId) return "wrong" as const;
+    return "dim" as const;
+  };
+
+  const onSelect = (id: string, correct: boolean) => {
+    if (answered) return;
+    setSelectedId(id);
+    if (correct) {
+      void awardQuizSuccess();
+    }
+  };
+
+  const onNext = () => {
+    if (!answered) return;
+    if (isLast) {
+      navigation.goBack();
+      return;
+    }
+
+    const nextIndex = index + 1;
+    const nextWord = sessionWords[nextIndex];
+    const nextQuiz = buildVibeQuiz(pool, { targetId: nextWord?.id });
+    if (!nextQuiz) {
+      navigation.goBack();
+      return;
+    }
+
+    setIndex(nextIndex);
+    setQuiz(nextQuiz);
+    setSelectedId(null);
+  };
 
   if (loading) {
     return (
@@ -80,15 +131,6 @@ export function QuizScreen() {
     );
   }
 
-  const answered = selectedId !== null;
-
-  const optionState = (id: string, correct: boolean) => {
-    if (!answered) return "default" as const;
-    if (correct) return "correct" as const;
-    if (id === selectedId) return "wrong" as const;
-    return "dim" as const;
-  };
-
   return (
     <View
       style={[
@@ -104,7 +146,7 @@ export function QuizScreen() {
           <Feather name="x" size={18} color={colors.textMuted} />
         </Pressable>
         <View style={styles.xpTrack}>
-          <View style={[styles.xpFill, { width: answered ? "100%" : "0%" }]} />
+          <View style={[styles.xpFill, { width: `${progressPct}%` }]} />
         </View>
         <View style={styles.streakPill}>
           <Text style={styles.streakText}>{shineScore} ✦</Text>
@@ -112,9 +154,11 @@ export function QuizScreen() {
       </View>
 
       <View style={styles.tags}>
-        <Tag label="✦ slang drop" variant="purple" />
+        <Tag label="vibe check" variant="coral" />
         <View style={styles.countPill}>
-          <Text style={styles.countText}>1 / 1</Text>
+          <Text style={styles.countText}>
+            {index + 1} / {total}
+          </Text>
         </View>
       </View>
 
@@ -132,13 +176,7 @@ export function QuizScreen() {
             key={opt.id}
             label={opt.label}
             state={optionState(opt.id, opt.correct)}
-            onPress={() => {
-              if (answered) return;
-              setSelectedId(opt.id);
-              if (opt.correct) {
-                void awardQuizSuccess();
-              }
-            }}
+            onPress={() => onSelect(opt.id, opt.correct)}
           />
         ))}
       </View>
@@ -147,8 +185,9 @@ export function QuizScreen() {
 
       <View style={styles.footer}>
         <Button
-          label="next →"
-          onPress={() => navigation.pop(2)}
+          label={isLast ? "done ✦" : "next →"}
+          onPress={onNext}
+          disabled={!answered}
         />
       </View>
     </View>
@@ -177,7 +216,7 @@ const styles = StyleSheet.create({
   xpFill: {
     height: "100%",
     borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.coralStrong,
   },
   streakPill: {
     backgroundColor: colors.amberBg,
@@ -208,7 +247,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   scenario: {
-    backgroundColor: colors.amberBg,
+    backgroundColor: colors.coralBg,
     borderRadius: radius.lg,
     padding: 14,
     marginBottom: spacing.lg,
@@ -216,13 +255,13 @@ const styles = StyleSheet.create({
   scenarioLabel: {
     fontSize: fontSize.micro,
     fontWeight: fontWeight.medium,
-    color: colors.amberText,
+    color: colors.coralText,
     marginBottom: 6,
   },
   scenarioText: {
     fontSize: 16,
     fontWeight: fontWeight.medium,
-    color: colors.amberDark,
+    color: colors.coralText,
     lineHeight: 22,
   },
   question: {

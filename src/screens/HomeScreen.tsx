@@ -96,6 +96,7 @@ export function HomeScreen() {
           variant="coral"
           progressFilled={0.2}
           icon={<Feather name="smile" size={18} color={colors.coralText} />}
+          onPress={() => navigation.navigate("VibeCheck")}
         />
 
         <LessonCard
