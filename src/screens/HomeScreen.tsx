@@ -138,10 +138,11 @@ export function HomeScreen() {
           title="catch the flow"
           subtitle="fast speech · filler sounds"
           variant="neutral"
-          progressFilled={0}
+          progressFilled={seenCount > 0 ? progressFilled : 0}
           icon={
-            <Feather name="headphones" size={18} color={colors.textMuted} />
+            <Feather name="headphones" size={18} color={colors.tealStrong} />
           }
+          onPress={() => navigation.navigate("EarTraining")}
         />
       </ScrollView>
     </View>

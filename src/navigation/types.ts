@@ -22,6 +22,7 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   SlangDrop: undefined;
   VibeCheck: undefined;
+  EarTraining: undefined;
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;

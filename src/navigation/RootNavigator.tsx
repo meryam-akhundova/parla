@@ -8,6 +8,7 @@ import { colors } from "../theme/theme";
 import { MainTabs } from "./MainTabs";
 import { SlangDropScreen } from "../screens/SlangDropScreen";
 import { VibeCheckScreen } from "../screens/VibeCheckScreen";
+import { EarTrainingScreen } from "../screens/EarTrainingScreen";
 import { SplashScreen } from "../screens/onboarding/SplashScreen";
 import { SignInScreen } from "../screens/auth/SignInScreen";
 import { SignUpScreen } from "../screens/auth/SignUpScreen";
@@ -71,6 +72,7 @@ export default function RootNavigator() {
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="SlangDrop" component={SlangDropScreen} />
             <Stack.Screen name="VibeCheck" component={VibeCheckScreen} />
+            <Stack.Screen name="EarTraining" component={EarTrainingScreen} />
           </>
         )}
       </Stack.Navigator>

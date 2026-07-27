@@ -20,4 +20,6 @@ export interface SlangWord {
   language: "turkish";
   similarWords: string[];
   culturalNote: string;
+  /** Public URL for ear-training clip; null until audio is uploaded. */
+  audioUrl: string | null;
 }

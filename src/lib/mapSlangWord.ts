@@ -15,6 +15,7 @@ export type SlangWordRow = {
     language: string;
     similar_words: string[] | null;
     cultural_note: string;
+    audio_url?: string | null;
 };
 
 export function mapSlangWord(row: SlangWordRow): SlangWord {
@@ -33,5 +34,9 @@ export function mapSlangWord(row: SlangWordRow): SlangWord {
         language: row.language as SlangWord["language"],
         similarWords: row.similar_words ?? [],
         culturalNote: row.cultural_note,
+        audioUrl:
+          typeof row.audio_url === "string" && row.audio_url.trim()
+            ? row.audio_url.trim()
+            : null,
     };
 }
