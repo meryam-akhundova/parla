@@ -9,6 +9,22 @@ import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
 import { useAuthStore } from "../store/authStore";
 
+const DAYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
+
+function getGreeting(hour: number): string {
+  if (hour < 12) return "good morning";
+  if (hour < 17) return "good afternoon";
+  return "good evening";
+}
+
 export function HomeScreen() {
   const navigation = useNavigation<MainTabNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -16,6 +32,10 @@ export function HomeScreen() {
 
   const name = profile?.display_name?.trim() || "you";
   const language = profile?.language ?? "turkish";
+
+  const now = new Date();
+  const dayName = DAYS[now.getDay()];
+  const greeting = getGreeting(now.getHours());
 
   const streakDays = profile?.streak_days ?? 0;
   const shineScore = profile?.shine_score ?? 0;
@@ -28,9 +48,9 @@ export function HomeScreen() {
       >
         <View style={styles.header}>
           <View style={styles.headerText}>
-          <Text style={styles.eyebrow}>monday · {language}</Text>
+          <Text style={styles.eyebrow}>{dayName} · {language}</Text>
           <Text style={styles.greeting}>
-            good morning, {name} <Text style={styles.spark}>✦</Text>
+            {greeting}, {name} <Text style={styles.spark}>✦</Text>
           </Text>
           </View>
           <View style={styles.avatar}>
