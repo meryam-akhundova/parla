@@ -1,8 +1,11 @@
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useState } from "react";
 
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 import { Button } from "../components/Button";
+import { buildProfileBadges } from "../lib/buildProfileBadges";
+import { useChatStore } from "../store/chatStore";
 
 import { useAuthStore, type UserGender } from "../store/authStore";
 
@@ -18,19 +21,13 @@ const GENDERS: { id: UserGender; label: string }[] = [
   { id: "neutral", label: "they / them" },
 ];
 
-const BADGES = [
-  { icon: "✦", label: "first shine", earned: true },
-  { icon: "🔥", label: "7-day streak", earned: true },
-  { icon: "💬", label: "first chat", earned: true },
-  { icon: "🌍", label: "polyglot", earned: false },
-  { icon: "✨", label: "full shine", earned: false },
-];
-
 export function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
   const updateGender = useAuthStore((s) => s.updateGender);
+  const threads = useChatStore((s) => s.threads);
+  const [genderError, setGenderError] = useState<string | null>(null);
 
   const name = profile?.display_name?.trim() || "you";
   const language = profile?.language ?? "turkish";
@@ -42,12 +39,32 @@ export function ProfileScreen() {
   const shineScore = profile?.shine_score ?? 0;
   const wordsLearned = profile?.words_learned ?? 0;
 
+  const streakGoal = 7;
+  const streakTowardWeek = Math.min(streakDays, streakGoal);
+  const streakFill = `${(streakTowardWeek / streakGoal) * 100}%`;
+  const streakHint =
+    streakTowardWeek >= streakGoal
+      ? "7-day streak unlocked ✦"
+      : streakDays === 0
+        ? "complete a quiz to start your streak ✦"
+        : `${streakGoal - streakTowardWeek} more for a 7-day streak ✦`;
+
+  const hasChatted = Object.values(threads).some((msgs) =>
+    msgs.some((m) => m.role === "you"),
+  );
+  const badges = buildProfileBadges(profile, hasChatted);
+
   const stats = [
     { num: String(streakDays), label: "day streak" },
     { num: String(shineScore), label: "shine score" },
     { num: String(wordsLearned), label: "words earned" },
   ];
 
+  const onPickGender = async (id: UserGender) => {
+    setGenderError(null);
+    const err = await updateGender(id);
+    if (err) setGenderError(err);
+  };
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
       <ScrollView
@@ -82,7 +99,7 @@ export function ProfileScreen() {
               <Pressable
                 key={g.id}
                 style={[styles.genderChip, selected && styles.genderChipSelected]}
-                onPress={() => void updateGender(g.id)}
+                onPress={() => void onPickGender(g.id)}
               >
                 <Text
                   style={[
@@ -96,22 +113,27 @@ export function ProfileScreen() {
             );
           })}
         </View>
+        {genderError ? (
+          <Text style={styles.genderError}>{genderError}</Text>
+        ) : null}
 
-        <Text style={styles.sectionLabel}>THIS WEEK</Text>
+        <Text style={styles.sectionLabel}>STREAK</Text>
         <View style={styles.weekCard}>
           <View style={styles.weekRow}>
-            <Text style={styles.weekLabel}>lessons completed</Text>
-            <Text style={styles.weekValue}>6 / 7</Text>
+            <Text style={styles.weekLabel}>toward 7 days</Text>
+            <Text style={styles.weekValue}>
+              {streakTowardWeek} / {streakGoal}
+            </Text>
           </View>
           <View style={styles.xpTrack}>
-            <View style={[styles.xpFill, { width: "86%" }]} />
+            <View style={[styles.xpFill, { width: streakFill }]} />
           </View>
-          <Text style={styles.weekHint}>one more for a perfect week ✦</Text>
+          <Text style={styles.weekHint}>{streakHint}</Text>
         </View>
 
         <Text style={styles.sectionLabel}>BADGES</Text>
         <View style={styles.badgeRow}>
-          {BADGES.map((badge) => (
+          {badges.map((badge) => (
             <View key={badge.label} style={styles.badgeItem}>
               <View
                 style={[
@@ -220,6 +242,11 @@ const styles = StyleSheet.create({
   genderChipTextSelected: {
     color: colors.primaryText,
     fontWeight: fontWeight.medium,
+  },
+  genderError: {
+    marginTop: spacing.sm,
+    fontSize: fontSize.small,
+    color: colors.coralStrong,
   },
   stat: {
     flex: 1,

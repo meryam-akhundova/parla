@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { nextStreak } from "../lib/streak";
 
 export type UserGender = "female" | "male" | "neutral";
 
@@ -15,6 +16,7 @@ type Profile = {
   streak_days: number;
   shine_score: number;
   words_learned: number;
+  last_active_date: string | null;
 };
 
 type OnboardingDraft = {
@@ -113,7 +115,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   updateGender: async (gender) => {
     const userId = get().session?.user.id;
-    if (!userId) return "Not signed in";
+    const { profile } = get();
+    if (!userId || !profile) return "Not signed in";
+    if (profile.gender === gender) return null;
+
+    // Optimistic — chip updates before the network round-trip
+    set({ profile: { ...profile, gender } });
+
     const { error } = await supabase
       .from("profiles")
       .update({
@@ -121,7 +129,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId);
-    if (error) return error.message;
+
+    if (error) {
+      set({ profile }); // revert
+      return error.message;
+    }
     await get().loadProfile();
     return null;
   },
@@ -130,16 +142,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { session, profile } = get();
     const userId = session?.user.id;
     if (!userId || !profile) return "Not signed in";
-  
+
+    const streak = nextStreak(profile.streak_days, profile.last_active_date);
+
     const { error } = await supabase
       .from("profiles")
       .update({
         shine_score: profile.shine_score + 10,
         words_learned: profile.words_learned + 1,
+        streak_days: streak.streak_days,
+        last_active_date: streak.last_active_date,
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId);
-  
+
     if (error) return error.message;
     await get().loadProfile();
     return null;
