@@ -1,9 +1,11 @@
-import { View, Text, StyleSheet } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, View, Text, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { RootNavigationProp } from "../../navigation/types";
 import { Button } from "../../components/Button";
+import { FadeSlideIn } from "../../components/animated/FadeSlideIn";
 import { colors, spacing, radius, fontSize, fontWeight } from "../../theme/theme";
 
 const PILLS = [
@@ -13,9 +15,119 @@ const PILLS = [
   { word: "laisse béton", gloss: "forget it · FR" },
 ];
 
+function FloatingPill({
+  word,
+  gloss,
+  delay,
+}: {
+  word: string;
+  gloss: string;
+  delay: number;
+}) {
+  const translateY = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 420,
+      delay,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(translateY, {
+          toValue: -5,
+          duration: 1400 + delay * 0.4,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 1400 + delay * 0.4,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    const timer = setTimeout(() => loop.start(), delay);
+    return () => {
+      clearTimeout(timer);
+      loop.stop();
+    };
+  }, [delay, opacity, translateY]);
+
+  return (
+    <Animated.View
+      style={[styles.pill, { opacity, transform: [{ translateY }] }]}
+    >
+      <Text style={styles.pillWord}>{word}</Text>
+      <Text style={styles.pillGloss}>{gloss}</Text>
+    </Animated.View>
+  );
+}
+
 export function SplashScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const insets = useSafeAreaInsets();
+
+  const sparkScale = useRef(new Animated.Value(1)).current;
+  const sparkOpacity = useRef(new Animated.Value(0.7)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 6,
+        tension: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 420,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(sparkScale, {
+            toValue: 1.18,
+            duration: 1100,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(sparkOpacity, {
+            toValue: 1,
+            duration: 1100,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(sparkScale, {
+            toValue: 1,
+            duration: 1100,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(sparkOpacity, {
+            toValue: 0.65,
+            duration: 1100,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [logoOpacity, logoScale, sparkOpacity, sparkScale]);
 
   return (
     <View
@@ -25,34 +137,63 @@ export function SplashScreen() {
       ]}
     >
       <View style={styles.center}>
-        <View style={styles.logo}>
-          <Text style={styles.logoSpark}>✦</Text>
-        </View>
-        <Text style={styles.brand}>parla</Text>
-        <Text style={styles.tagline}>speak. shine. connect.</Text>
+        <Animated.View
+          style={[
+            styles.logo,
+            { opacity: logoOpacity, transform: [{ scale: logoScale }] },
+          ]}
+        >
+          <Animated.Text
+            style={[
+              styles.logoSpark,
+              { opacity: sparkOpacity, transform: [{ scale: sparkScale }] },
+            ]}
+          >
+            ✦
+          </Animated.Text>
+        </Animated.View>
+        <FadeSlideIn delay={120}>
+          <Text style={styles.brand}>parla</Text>
+        </FadeSlideIn>
+        <FadeSlideIn delay={200}>
+          <Text style={styles.tagline}>speak. shine. connect.</Text>
+        </FadeSlideIn>
 
-        <View style={styles.sparkleBlock}>
-          <Text style={styles.sparkles}>✦  ✦  ✦</Text>
+        <FadeSlideIn delay={320} style={styles.sparkleBlock}>
+          <Animated.Text
+            style={[
+              styles.sparkles,
+              { opacity: sparkOpacity, transform: [{ scale: sparkScale }] },
+            ]}
+          >
+            ✦  ✦  ✦
+          </Animated.Text>
           <Text style={styles.sparkleCaption}>every word a little brighter</Text>
-        </View>
+        </FadeSlideIn>
       </View>
 
       <View style={styles.bottom}>
-        <Button
-          label="get started"
-          onPress={() => navigation.navigate("SignUp")}
-        />
-        <Button
-          label="i already have an account"
-          variant="ghost"
-          onPress={() => navigation.navigate("SignIn")}
-        />
+        <FadeSlideIn delay={400}>
+          <Button
+            label="get started"
+            onPress={() => navigation.navigate("SignUp")}
+          />
+        </FadeSlideIn>
+        <FadeSlideIn delay={480}>
+          <Button
+            label="i already have an account"
+            variant="ghost"
+            onPress={() => navigation.navigate("SignIn")}
+          />
+        </FadeSlideIn>
         <View style={styles.pills}>
-          {PILLS.map((pill) => (
-            <View key={pill.word} style={styles.pill}>
-              <Text style={styles.pillWord}>{pill.word}</Text>
-              <Text style={styles.pillGloss}>{pill.gloss}</Text>
-            </View>
+          {PILLS.map((pill, i) => (
+            <FloatingPill
+              key={pill.word}
+              word={pill.word}
+              gloss={pill.gloss}
+              delay={520 + i * 90}
+            />
           ))}
         </View>
       </View>
@@ -91,12 +232,14 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
     letterSpacing: -0.5,
     marginBottom: 3,
+    textAlign: "center",
   },
   tagline: {
     fontSize: fontSize.small,
     color: colors.primaryFaint,
     letterSpacing: 0.5,
     marginBottom: spacing.xxl,
+    textAlign: "center",
   },
   sparkleBlock: {
     alignItems: "center",

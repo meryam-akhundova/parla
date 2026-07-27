@@ -1,4 +1,6 @@
-import { View, Text, StyleSheet } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, Text, StyleSheet, View } from "react-native";
+
 import type { VibeLevel } from "../data/types";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
@@ -20,6 +22,57 @@ const LEVEL_EMOJI = {
   formal: "💼",
 } as const;
 
+function VibeTile({
+  label,
+  level,
+  emoji,
+  delay,
+}: {
+  label: string;
+  level: VibeLevel;
+  emoji: string;
+  delay: number;
+}) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.85)).current;
+
+  useEffect(() => {
+    opacity.setValue(0);
+    scale.setValue(0.85);
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          friction: 6,
+          tension: 120,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, [level, label, delay, opacity, scale]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.tile,
+        levelStyles[level],
+        { opacity, transform: [{ scale }] },
+      ]}
+    >
+      <Text style={styles.emoji}>{emoji}</Text>
+      <Text style={[styles.label, labelStyles[level]]}>{label}</Text>
+      <Text style={[styles.copy, copyStyles[level]]}>{LEVEL_COPY[level]}</Text>
+    </Animated.View>
+  );
+}
+
 export function VibeMeter({ friends, strangers, formal }: VibeMeterProps) {
   const tiles = [
     { key: "friends" as const, label: "friends", level: friends },
@@ -29,16 +82,14 @@ export function VibeMeter({ friends, strangers, formal }: VibeMeterProps) {
 
   return (
     <View style={styles.row}>
-      {tiles.map((tile) => (
-        <View key={tile.key} style={[styles.tile, levelStyles[tile.level]]}>
-          <Text style={styles.emoji}>{LEVEL_EMOJI[tile.key]}</Text>
-          <Text style={[styles.label, labelStyles[tile.level]]}>
-            {tile.label}
-          </Text>
-          <Text style={[styles.copy, copyStyles[tile.level]]}>
-            {LEVEL_COPY[tile.level]}
-          </Text>
-        </View>
+      {tiles.map((tile, i) => (
+        <VibeTile
+          key={tile.key}
+          label={tile.label}
+          level={tile.level}
+          emoji={LEVEL_EMOJI[tile.key]}
+          delay={i * 70}
+        />
       ))}
     </View>
   );

@@ -9,6 +9,7 @@ import { Tag } from "../components/Tag";
 import { HintBox } from "../components/HintBox";
 import { QuizOption } from "../components/QuizOption";
 import { Button } from "../components/Button";
+import { AnimatedProgressBar } from "../components/animated/AnimatedProgressBar";
 import { fetchSlangWords } from "../lib/slang";
 import { sessionSizeFromPace } from "../lib/sessionSize";
 import { pickSessionWords } from "../lib/pickSessionWords";
@@ -161,7 +162,11 @@ export function VibeCheckScreen() {
           <Feather name="x" size={18} color={colors.textMuted} />
         </Pressable>
         <View style={styles.xpTrack}>
-          <View style={[styles.xpFill, { width: `${progressPct}%` }]} />
+          <AnimatedProgressBar
+            progress={progressPct}
+            color={colors.coralStrong}
+            style={styles.xpBar}
+          />
         </View>
         <View style={styles.streakPill}>
           <Text style={styles.streakText}>{shineScore} ✦</Text>
@@ -223,15 +228,9 @@ const styles = StyleSheet.create({
   },
   xpTrack: {
     flex: 1,
-    height: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.borderLight,
-    overflow: "hidden",
   },
-  xpFill: {
-    height: "100%",
-    borderRadius: radius.full,
-    backgroundColor: colors.coralStrong,
+  xpBar: {
+    flex: 1,
   },
   streakPill: {
     backgroundColor: colors.amberBg,

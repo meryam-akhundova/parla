@@ -1,11 +1,12 @@
-import { Pressable, Text, StyleSheet } from "react-native";
+import { Text, StyleSheet } from "react-native";
+
+import { PressScale } from "./animated/PressScale";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
-// describes the shape of a button
 interface ButtonProps {
   label: string;
-  onPress: () => void; // must be a function that returns nothing
-  variant?: "primary" | "ghost"; // optional
+  onPress: () => void;
+  variant?: "primary" | "ghost";
   disabled?: boolean;
 }
 
@@ -18,13 +19,13 @@ export function Button({
   const isPrimary = variant === "primary";
 
   return (
-    <Pressable
+    <PressScale
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [
+      pressedScale={0.97}
+      style={[
         styles.base,
         isPrimary ? styles.primary : styles.ghost,
-        pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
       ]}
     >
@@ -36,7 +37,7 @@ export function Button({
       >
         {label}
       </Text>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -56,9 +57,6 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderWidth: 0.5,
     borderColor: colors.border,
-  },
-  pressed: {
-    opacity: 0.85,
   },
   disabled: {
     opacity: 0.45,

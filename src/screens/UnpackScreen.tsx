@@ -18,6 +18,7 @@ import { Tag } from "../components/Tag";
 import { HintBox } from "../components/HintBox";
 import { Button } from "../components/Button";
 import { SentenceBubble } from "../components/SentenceBubble";
+import { AnimatedProgressBar } from "../components/animated/AnimatedProgressBar";
 import { fetchSlangWords } from "../lib/slang";
 import { sessionSizeFromPace } from "../lib/sessionSize";
 import { pickSessionWords } from "../lib/pickSessionWords";
@@ -206,7 +207,11 @@ export function UnpackScreen() {
             <Feather name="x" size={18} color={colors.textMuted} />
           </Pressable>
           <View style={styles.xpTrack}>
-            <View style={[styles.xpFill, { width: `${progressPct}%` }]} />
+            <AnimatedProgressBar
+              progress={progressPct}
+              color={colors.tealStrong}
+              style={styles.xpBar}
+            />
           </View>
           <View style={styles.streakPill}>
             <Text style={styles.streakText}>{shineScore} ✦</Text>
@@ -335,15 +340,9 @@ const styles = StyleSheet.create({
   },
   xpTrack: {
     flex: 1,
-    height: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.borderLight,
-    overflow: "hidden",
   },
-  xpFill: {
-    height: "100%",
-    borderRadius: radius.full,
-    backgroundColor: colors.tealStrong,
+  xpBar: {
+    flex: 1,
   },
   streakPill: {
     backgroundColor: colors.amberBg,

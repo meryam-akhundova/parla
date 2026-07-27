@@ -6,6 +6,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { MainTabNavigationProp } from "../navigation/types";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 import { Button } from "../components/Button";
+import { AnimatedProgressBar } from "../components/animated/AnimatedProgressBar";
 import { avatarInitialFromName } from "../lib/avatar";
 import { buildProfileBadges } from "../lib/buildProfileBadges";
 import { APP_LANGUAGES, languageMeta } from "../data/languages";
@@ -109,8 +110,7 @@ export function ProfileScreen() {
 
   const streakGoal = 7;
   const streakTowardWeek = Math.min(streakDays, streakGoal);
-  const streakFill =
-    `${(streakTowardWeek / streakGoal) * 100}%` as `${number}%`;
+  const streakFillPct = (streakTowardWeek / streakGoal) * 100;
   const streakHint =
     streakTowardWeek >= streakGoal
       ? "7-day streak unlocked ✦"
@@ -329,7 +329,11 @@ export function ProfileScreen() {
             </Text>
           </View>
           <View style={styles.xpTrack}>
-            <View style={[styles.xpFill, { width: streakFill }]} />
+            <AnimatedProgressBar
+              progress={streakFillPct}
+              color={colors.amberStrong}
+              trackColor={colors.amberBg}
+            />
           </View>
           <Text style={styles.weekHint}>{streakHint}</Text>
         </View>
@@ -535,15 +539,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   xpTrack: {
-    height: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.borderLight,
-    overflow: "hidden",
-  },
-  xpFill: {
-    height: "100%",
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    width: "100%",
   },
   weekHint: {
     fontSize: fontSize.micro,

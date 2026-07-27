@@ -75,6 +75,29 @@ export function FlipWordCard({
     });
   }, [flipped, face, busy, progress]);
 
+  const hintPulse = useRef(new Animated.Value(0.45)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(hintPulse, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(hintPulse, {
+          toValue: 0.45,
+          duration: 900,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [hintPulse, face]);
+
   const rotateY = progress.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: ["0deg", "90deg", "0deg"],
@@ -110,7 +133,9 @@ export function FlipWordCard({
                 </View>
               </View>
 
-              <Text style={styles.hint}>tap to flip ✦</Text>
+              <Animated.Text style={[styles.hint, { opacity: hintPulse }]}>
+                tap to flip ✦
+              </Animated.Text>
             </View>
           ) : (
             <View style={styles.face}>
@@ -142,7 +167,9 @@ export function FlipWordCard({
 
               <HintBox message={word.culturalNote} />
 
-              <Text style={styles.hint}>tap to flip back</Text>
+              <Animated.Text style={[styles.hint, { opacity: hintPulse }]}>
+                tap to flip back
+              </Animated.Text>
             </View>
           )}
         </Animated.View>

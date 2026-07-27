@@ -1,6 +1,8 @@
-import { Pressable, View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import type { ReactNode } from "react";
+
 import { Tag } from "./Tag";
+import { PressScale } from "./animated/PressScale";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
 type LessonVariant = "purple" | "coral" | "neutral";
@@ -32,13 +34,10 @@ export function LessonCard({
   const empty = progressTotal - filled;
 
   return (
-    <Pressable
+    <PressScale
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.base,
-        variantStyles[variant],
-        pressed && styles.pressed,
-      ]}
+      pressedScale={0.98}
+      style={[styles.base, variantStyles[variant]]}
     >
       <View style={styles.row}>
         <View style={styles.textBlock}>
@@ -69,7 +68,7 @@ export function LessonCard({
           />
         ) : null}
       </View>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -118,9 +117,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: 14,
     marginBottom: spacing.sm,
-  },
-  pressed: {
-    opacity: 0.85,
   },
   row: {
     flexDirection: "row",

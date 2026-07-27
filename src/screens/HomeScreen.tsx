@@ -6,6 +6,7 @@ import { Feather } from "@expo/vector-icons";
 
 import type { MainTabNavigationProp } from "../navigation/types";
 import { LessonCard } from "../components/LessonCard";
+import { FadeSlideIn } from "../components/animated/FadeSlideIn";
 import { avatarInitialFromName } from "../lib/avatar";
 import { fetchSlangWords } from "../lib/slang";
 import { fetchProgressStats } from "../lib/wordProgress";
@@ -166,111 +167,125 @@ export function HomeScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.eyebrow}>
-              {dayName} · {language}
-            </Text>
-            <Text style={styles.greeting}>
-              {greeting}, {name} <Text style={styles.spark}>✦</Text>
-            </Text>
+        <FadeSlideIn>
+          <View style={styles.header}>
+            <View style={styles.headerText}>
+              <Text style={styles.eyebrow}>
+                {dayName} · {language}
+              </Text>
+              <Text style={styles.greeting}>
+                {greeting}, {name} <Text style={styles.spark}>✦</Text>
+              </Text>
+            </View>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarInitial}>
+                {avatarInitialFromName(name)}
+              </Text>
+            </View>
           </View>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarInitial}>
-              {avatarInitialFromName(name)}
-            </Text>
-          </View>
-        </View>
+        </FadeSlideIn>
 
-        <View style={styles.streakBanner}>
-          <View>
-            <Text style={styles.streakLabel}>your streak</Text>
-            <Text style={styles.streakValue}>{streakDays} days</Text>
+        <FadeSlideIn delay={80}>
+          <View style={styles.streakBanner}>
+            <View>
+              <Text style={styles.streakLabel}>your streak</Text>
+              <Text style={styles.streakValue}>{streakDays} days</Text>
+            </View>
+            <View style={styles.streakRight}>
+              <Text style={styles.streakLabel}>shine score</Text>
+              <Text style={styles.streakValue}>✦ {shineScore}</Text>
+            </View>
           </View>
-          <View style={styles.streakRight}>
-            <Text style={styles.streakLabel}>shine score</Text>
-            <Text style={styles.streakValue}>✦ {shineScore}</Text>
-          </View>
-        </View>
+        </FadeSlideIn>
 
         {(dueCount > 0 || bookmarkCount > 0) && (
-          <View style={styles.quickRow}>
-            {dueCount > 0 ? (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.quickCard,
-                  styles.reviewCard,
-                  pressed && styles.quickPressed,
-                ]}
-                onPress={() => navigation.navigate("Review")}
-              >
-                <Text style={styles.reviewLabel}>review due</Text>
-                <Text style={styles.quickValue}>{dueCount} words</Text>
-              </Pressable>
-            ) : null}
-            {bookmarkCount > 0 ? (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.quickCard,
-                  styles.bookmarkCard,
-                  pressed && styles.quickPressed,
-                ]}
-                onPress={() => navigation.navigate("Bookmarks")}
-              >
-                <Text style={styles.bookmarkLabel}>saved</Text>
-                <Text style={styles.quickValueBk}>{bookmarkCount}</Text>
-              </Pressable>
-            ) : null}
-          </View>
+          <FadeSlideIn delay={140}>
+            <View style={styles.quickRow}>
+              {dueCount > 0 ? (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.quickCard,
+                    styles.reviewCard,
+                    pressed && styles.quickPressed,
+                  ]}
+                  onPress={() => navigation.navigate("Review")}
+                >
+                  <Text style={styles.reviewLabel}>review due</Text>
+                  <Text style={styles.quickValue}>{dueCount} words</Text>
+                </Pressable>
+              ) : null}
+              {bookmarkCount > 0 ? (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.quickCard,
+                    styles.bookmarkCard,
+                    pressed && styles.quickPressed,
+                  ]}
+                  onPress={() => navigation.navigate("Bookmarks")}
+                >
+                  <Text style={styles.bookmarkLabel}>saved</Text>
+                  <Text style={styles.quickValueBk}>{bookmarkCount}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </FadeSlideIn>
         )}
 
-        <Text style={styles.sectionLabel}>
-          TODAY'S DROPS · {target} each
-        </Text>
+        <FadeSlideIn delay={180}>
+          <Text style={styles.sectionLabel}>
+            TODAY'S DROPS · {target} each
+          </Text>
+        </FadeSlideIn>
 
-        <LessonCard
-          tag="✦ slang drop"
-          tagVariant="purple"
-          title="texting like a local"
-          subtitle={teasers.slang}
-          variant="purple"
-          progressFilled={slangProgress}
-          progressTotal={target}
-          icon={
-            <Feather
-              name="message-square"
-              size={18}
-              color={colors.primaryText}
-            />
-          }
-          onPress={() => navigation.navigate("SlangDrop")}
-        />
+        <FadeSlideIn delay={220}>
+          <LessonCard
+            tag="✦ slang drop"
+            tagVariant="purple"
+            title="texting like a local"
+            subtitle={teasers.slang}
+            variant="purple"
+            progressFilled={slangProgress}
+            progressTotal={target}
+            icon={
+              <Feather
+                name="message-square"
+                size={18}
+                color={colors.primaryText}
+              />
+            }
+            onPress={() => navigation.navigate("SlangDrop")}
+          />
+        </FadeSlideIn>
 
-        <LessonCard
-          tag="vibe check"
-          tagVariant="coral"
-          title="reacting naturally"
-          subtitle={teasers.vibe}
-          variant="coral"
-          progressFilled={vibeProgress}
-          progressTotal={target}
-          icon={<Feather name="smile" size={18} color={colors.coralText} />}
-          onPress={() => navigation.navigate("VibeCheck")}
-        />
+        <FadeSlideIn delay={300}>
+          <LessonCard
+            tag="vibe check"
+            tagVariant="coral"
+            title="reacting naturally"
+            subtitle={teasers.vibe}
+            variant="coral"
+            progressFilled={vibeProgress}
+            progressTotal={target}
+            icon={<Feather name="smile" size={18} color={colors.coralText} />}
+            onPress={() => navigation.navigate("VibeCheck")}
+          />
+        </FadeSlideIn>
 
-        <LessonCard
-          tag="unpack"
-          tagVariant="teal"
-          title="translate the slang line"
-          subtitle={teasers.unpack}
-          variant="neutral"
-          progressFilled={earProgress}
-          progressTotal={target}
-          icon={
-            <Feather name="type" size={18} color={colors.tealStrong} />
-          }
-          onPress={() => navigation.navigate("Unpack")}
-        />
+        <FadeSlideIn delay={380}>
+          <LessonCard
+            tag="unpack"
+            tagVariant="teal"
+            title="translate the slang line"
+            subtitle={teasers.unpack}
+            variant="neutral"
+            progressFilled={earProgress}
+            progressTotal={target}
+            icon={
+              <Feather name="type" size={18} color={colors.tealStrong} />
+            }
+            onPress={() => navigation.navigate("Unpack")}
+          />
+        </FadeSlideIn>
       </ScrollView>
     </View>
   );

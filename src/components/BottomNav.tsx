@@ -1,6 +1,8 @@
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, View, Text, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+
 import { colors, fontWeight } from "../theme/theme";
 
 type NavTab = "home" | "explore" | "chat" | "me";
@@ -23,25 +25,50 @@ const TABS: {
   { id: "me", label: "me", icon: "user" },
 ];
 
+function NavItem({
+  tab,
+  isActive,
+  onPress,
+}: {
+  tab: (typeof TABS)[number];
+  isActive: boolean;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(isActive ? 1 : 0.92)).current;
+  const color = isActive ? colors.primary : colors.textMuted;
+
+  useEffect(() => {
+    Animated.spring(scale, {
+      toValue: isActive ? 1.08 : 1,
+      friction: 5,
+      tension: 160,
+      useNativeDriver: true,
+    }).start();
+  }, [isActive, scale]);
+
+  return (
+    <Pressable onPress={onPress} style={styles.item}>
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Feather name={tab.icon} size={20} color={color} />
+      </Animated.View>
+      <Text style={[styles.label, { color }]}>{tab.label}</Text>
+    </Pressable>
+  );
+}
+
 export function BottomNav({ active = "home", onPressTab }: BottomNavProps) {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-      {TABS.map((tab) => {
-        const isActive = active === tab.id;
-        const color = isActive ? colors.primary : colors.textMuted;
-        return (
-          <Pressable
-            key={tab.id}
-            onPress={() => onPressTab?.(tab.id)}
-            style={styles.item}
-          >
-            <Feather name={tab.icon} size={20} color={color} />
-            <Text style={[styles.label, { color }]}>{tab.label}</Text>
-          </Pressable>
-        );
-      })}
+      {TABS.map((tab) => (
+        <NavItem
+          key={tab.id}
+          tab={tab}
+          isActive={active === tab.id}
+          onPress={() => onPressTab?.(tab.id)}
+        />
+      ))}
     </View>
   );
 }

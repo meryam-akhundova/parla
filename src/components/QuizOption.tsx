@@ -1,5 +1,14 @@
-import { Pressable, Text, StyleSheet } from "react-native";
+import { useEffect, useRef } from "react";
+import {
+  Animated,
+  Platform,
+  Pressable,
+  Text,
+  StyleSheet,
+  Vibration,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
+
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
 type QuizOptionState = "default" | "correct" | "wrong" | "dim";
@@ -17,6 +26,58 @@ export function QuizOption({
   onPress,
   disabled = false,
 }: QuizOptionProps) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const shake = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (state === "correct") {
+      if (Platform.OS !== "web") Vibration.vibrate(18);
+      Animated.sequence([
+        Animated.spring(scale, {
+          toValue: 1.04,
+          friction: 4,
+          tension: 180,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          friction: 5,
+          tension: 120,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (state === "wrong") {
+      if (Platform.OS !== "web") Vibration.vibrate(40);
+      Animated.sequence([
+        Animated.timing(shake, {
+          toValue: 7,
+          duration: 45,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shake, {
+          toValue: -7,
+          duration: 45,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shake, {
+          toValue: 5,
+          duration: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shake, {
+          toValue: -4,
+          duration: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shake, {
+          toValue: 0,
+          duration: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [state, scale, shake]);
+
   const iconName =
     state === "correct" ? "check" : state === "wrong" ? "x" : "circle";
   const iconColor =
@@ -31,13 +92,21 @@ export function QuizOption({
       onPress={onPress}
       disabled={disabled || state !== "default"}
       style={({ pressed }) => [
-        styles.base,
-        stateStyles[state],
         pressed && state === "default" && styles.pressed,
       ]}
     >
-      <Feather name={iconName} size={16} color={iconColor} />
-      <Text style={[styles.label, labelStyles[state]]}>{label}</Text>
+      <Animated.View
+        style={[
+          styles.base,
+          stateStyles[state],
+          {
+            transform: [{ translateX: shake }, { scale }],
+          },
+        ]}
+      >
+        <Feather name={iconName} size={16} color={iconColor} />
+        <Text style={[styles.label, labelStyles[state]]}>{label}</Text>
+      </Animated.View>
     </Pressable>
   );
 }
