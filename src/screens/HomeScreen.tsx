@@ -1,10 +1,13 @@
+import { useCallback, useState } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
 import type { MainTabNavigationProp } from "../navigation/types";
 import { LessonCard } from "../components/LessonCard";
+import { fetchSlangWords } from "../lib/slang";
+import { fetchSeenWordIds } from "../lib/wordProgress";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
 import { useAuthStore } from "../store/authStore";
@@ -39,6 +42,33 @@ export function HomeScreen() {
 
   const streakDays = profile?.streak_days ?? 0;
   const shineScore = profile?.shine_score ?? 0;
+
+  const [totalWords, setTotalWords] = useState(0);
+  const [seenCount, setSeenCount] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        const [words, seen] = await Promise.all([
+          fetchSlangWords(),
+          fetchSeenWordIds(),
+        ]);
+        if (!active) return;
+        setTotalWords(words.data.length);
+        // Prefer live table count; fall back to profile if fetch fails
+        setSeenCount(
+          seen.error ? (profile?.words_learned ?? 0) : seen.ids.length,
+        );
+      })();
+      return () => {
+        active = false;
+      };
+    }, [profile?.words_learned]),
+  );
+
+  const progressFilled =
+    totalWords > 0 ? Math.min(1, seenCount / totalWords) : 0;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
@@ -77,7 +107,7 @@ export function HomeScreen() {
           title="texting like a local"
           subtitle="ya bro · eyw · kanka · lan"
           variant="purple"
-          progressFilled={0.6}
+          progressFilled={progressFilled}
           icon={
             <Feather
               name="message-square"
@@ -94,7 +124,7 @@ export function HomeScreen() {
           title="reacting naturally"
           subtitle="aynen · kesinlikle · yok artık"
           variant="coral"
-          progressFilled={0.2}
+          progressFilled={seenCount > 0 ? progressFilled : 0}
           icon={<Feather name="smile" size={18} color={colors.coralText} />}
           onPress={() => navigation.navigate("VibeCheck")}
         />

@@ -12,6 +12,7 @@ import { Button } from "../components/Button";
 import { fetchSlangWords } from "../lib/slang";
 import { sessionSizeFromPace } from "../lib/sessionSize";
 import { pickSessionWords } from "../lib/pickSessionWords";
+import { fetchSeenWordIds } from "../lib/wordProgress";
 import { buildVibeQuiz, type VibeQuiz } from "../lib/buildVibeQuiz";
 import type { SlangWord } from "../data/types";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
@@ -36,7 +37,10 @@ export function VibeCheckScreen() {
     let cancelled = false;
 
     (async () => {
-      const { data, error: fetchError } = await fetchSlangWords();
+      const [{ data, error: fetchError }, seen] = await Promise.all([
+        fetchSlangWords(),
+        fetchSeenWordIds(),
+      ]);
       if (cancelled) return;
 
       if (fetchError) {
@@ -52,7 +56,8 @@ export function VibeCheckScreen() {
       }
 
       const size = sessionSizeFromPace(pace);
-      const picked = pickSessionWords(data, size);
+      const preferIds = new Set(seen.ids);
+      const picked = pickSessionWords(data, size, { preferIds });
       setPool(data);
       setSessionWords(picked);
 

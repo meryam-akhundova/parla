@@ -11,6 +11,7 @@ import { Button } from "../components/Button";
 import { fetchSlangWords } from "../lib/slang";
 import { sessionSizeFromPace } from "../lib/sessionSize";
 import { pickSessionWords } from "../lib/pickSessionWords";
+import { fetchSeenWordIds, markWordsSeen } from "../lib/wordProgress";
 import type { SlangWord } from "../data/types";
 import { useAuthStore } from "../store/authStore";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
@@ -32,7 +33,10 @@ export function SlangDropScreen() {
     let cancelled = false;
 
     (async () => {
-      const { data, error: fetchError } = await fetchSlangWords();
+      const [{ data, error: fetchError }, seen] = await Promise.all([
+        fetchSlangWords(),
+        fetchSeenWordIds(),
+      ]);
       if (cancelled) return;
 
       if (fetchError) {
@@ -48,7 +52,8 @@ export function SlangDropScreen() {
       }
 
       const size = sessionSizeFromPace(pace);
-      setWords(pickSessionWords(data, size));
+      const avoidIds = new Set(seen.ids);
+      setWords(pickSessionWords(data, size, { avoidIds }));
       setLoading(false);
     })();
 
@@ -62,18 +67,21 @@ export function SlangDropScreen() {
   const isLast = index >= total - 1;
 
   const finishSession = async () => {
-    if (finishing) return;
+    if (finishing || !word) return;
     setFinishing(true);
-    await awardSlangDropComplete(total);
+    await markWordsSeen([word.id]);
+    await awardSlangDropComplete();
     navigation.goBack();
   };
 
   const onNext = () => {
-    if (!flipped) return;
+    if (!flipped || !word) return;
     if (isLast) {
       void finishSession();
       return;
     }
+    const currentId = word.id;
+    void markWordsSeen([currentId]);
     setIndex((i) => i + 1);
     setFlipped(false);
   };
