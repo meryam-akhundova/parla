@@ -20,6 +20,31 @@ function parseSuggestions(value: unknown): string[] {
     .slice(0, 3);
 }
 
+/** Pull the real error body out of FunctionsHttpError when possible. */
+async function invokeErrorMessage(
+  error: { message: string; context?: unknown },
+  data: unknown,
+): Promise<string> {
+  if (data && typeof data === "object" && "error" in data) {
+    const bodyError = (data as { error?: unknown }).error;
+    if (typeof bodyError === "string" && bodyError.trim()) return bodyError;
+  }
+
+  const context = error.context;
+  if (context && typeof context === "object" && "json" in context) {
+    try {
+      const body = await (context as Response).json();
+      if (typeof body?.error === "string" && body.error.trim()) {
+        return body.error;
+      }
+    } catch {
+      // ignore parse failures
+    }
+  }
+
+  return error.message;
+}
+
 /** Unwrap model JSON if the bubble text is still raw {"reply":...} */
 function unwrapPayload(
   reply: unknown,
@@ -90,7 +115,7 @@ export async function chatWithPersona(
   suggestions: string[];
   error: string | null;
 }> {
-  const { data, error } = await supabase.functions.invoke("chat-with-zeynep", {
+  const { data, error } = await supabase.functions.invoke("chat", {
     body: {
       message,
       history,
@@ -105,7 +130,7 @@ export async function chatWithPersona(
       reply: null,
       feedback: null,
       suggestions: [],
-      error: error.message,
+      error: await invokeErrorMessage(error, data),
     };
   }
 
@@ -184,7 +209,7 @@ export async function explainSlangInMessage(
   options?.onEnriching?.();
 
   const knownTerms = localItems.map((item) => item.term);
-  const { data, error } = await supabase.functions.invoke("chat-with-zeynep", {
+  const { data, error } = await supabase.functions.invoke("chat", {
     body: { action: "explain", message, knownTerms },
   });
 
@@ -193,7 +218,7 @@ export async function explainSlangInMessage(
     if (localItems.length > 0) {
       return { items: localItems, error: null };
     }
-    return { items: [], error: error.message };
+    return { items: [], error: await invokeErrorMessage(error, data) };
   }
   if (data?.error) {
     if (localItems.length > 0) {
