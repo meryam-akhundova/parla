@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "../../components/Button";
-import { HintBox } from "../../components/HintBox";
-import { WordCard } from "../../components/WordCard";
+import { FlipWordCard } from "../../components/FlipWordCard";
 import { StepRow } from "./StepRow";
 import { fetchSlangWords } from "../../lib/slang";
+import { pickSessionWords } from "../../lib/pickSessionWords";
+import { markWordsSeen } from "../../lib/wordProgress";
 import type { SlangWord } from "../../data/types";
 import { colors, spacing, fontSize, fontWeight } from "../../theme/theme";
 import { useAuthStore } from "../../store/authStore";
@@ -15,6 +16,7 @@ export function OnboardingFirstWordScreen() {
   const saveOnboarding = useAuthStore((s) => s.saveOnboarding);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [flipped, setFlipped] = useState(false);
 
   const [word, setWord] = useState<SlangWord | null>(null);
   const [wordLoading, setWordLoading] = useState(true);
@@ -35,8 +37,9 @@ export function OnboardingFirstWordScreen() {
         return;
       }
 
-      setWord(data[0] ?? null);
-      if (!data[0]) setWordError("No slang words yet");
+      const pick = pickSessionWords(data, 1)[0] ?? null;
+      setWord(pick);
+      if (!pick) setWordError("No slang words yet");
       setWordLoading(false);
     })();
 
@@ -46,14 +49,20 @@ export function OnboardingFirstWordScreen() {
   }, []);
 
   const finishOnboarding = async () => {
+    if (!word || !flipped) return;
     setError(null);
     setLoading(true);
+
+    // Save prefs first, then credit the reveal as their first seen word
     const err = await saveOnboarding();
-    setLoading(false);
     if (err) {
+      setLoading(false);
       setError(err);
       return;
     }
+
+    await markWordsSeen([word.id]);
+    setLoading(false);
   };
 
   if (wordLoading) {
@@ -99,27 +108,31 @@ export function OnboardingFirstWordScreen() {
       <View style={styles.header}>
         <Text style={styles.sparkle}>✦  ✦  ✦</Text>
         <Text style={styles.title}>you're ready to shine</Text>
-        <Text style={styles.subtitle}>here's your first turkish word</Text>
+        <Text style={styles.subtitle}>
+          {flipped
+            ? "nice — you've got your first word ✦"
+            : "tap the card to reveal your first turkish word"}
+        </Text>
       </View>
 
-      <WordCard
-        word={word.word}
-        romanization={word.romanization}
-        meaning={word.meaning}
-        exampleMessage={word.exampleMessage}
-        exampleTranslation={word.exampleTranslation}
-        category="✦ slang drop"
-        categoryVariant="purple"
-      />
-
-      <HintBox message={word.culturalNote} />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <FlipWordCard
+          word={word}
+          flipped={flipped}
+          onFlip={() => setFlipped((f) => !f)}
+        />
+      </ScrollView>
 
       <View style={styles.footer}>
         <Button
-          label={loading ? "saving…" : "start my first lesson"}
-          onPress={finishOnboarding}
+          label={loading ? "saving…" : "start learning ✦"}
+          onPress={() => void finishOnboarding()}
+          disabled={!flipped || loading}
         />
-        {error ? <Text style={{ color: colors.errorStrong }}>{error}</Text> : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>
     </View>
   );
@@ -151,9 +164,20 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: fontSize.small,
     color: colors.textSecondary,
+    textAlign: "center",
+    paddingHorizontal: spacing.md,
+  },
+  scroll: {
+    paddingBottom: spacing.md,
   },
   footer: {
     marginTop: "auto",
+    gap: spacing.sm,
+  },
+  errorText: {
+    color: colors.errorStrong,
+    fontSize: fontSize.small,
+    textAlign: "center",
   },
   centered: {
     flex: 1,
