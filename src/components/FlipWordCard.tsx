@@ -7,6 +7,7 @@ import {
   Animated,
   Easing,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 
 import type { SlangWord } from "../data/types";
 import { HintBox } from "./HintBox";
@@ -17,9 +18,17 @@ interface FlipWordCardProps {
   word: SlangWord;
   flipped: boolean;
   onFlip: () => void;
+  bookmarked?: boolean;
+  onToggleBookmark?: () => void;
 }
 
-export function FlipWordCard({ word, flipped, onFlip }: FlipWordCardProps) {
+export function FlipWordCard({
+  word,
+  flipped,
+  onFlip,
+  bookmarked = false,
+  onToggleBookmark,
+}: FlipWordCardProps) {
   // 0 → open, 0.5 → edge-on (swap face), 1 → open again
   const progress = useRef(new Animated.Value(0)).current;
   const [face, setFace] = useState<"front" | "back">(flipped ? "back" : "front");
@@ -77,68 +86,88 @@ export function FlipWordCard({ word, flipped, onFlip }: FlipWordCardProps) {
   });
 
   return (
-    <Pressable onPress={onFlip} disabled={busy}>
-      <Animated.View
-        style={[
-          styles.card,
-          {
-            transform: [{ perspective: 1000 }, { rotateY }, { scaleX }],
-          },
-        ]}
-      >
-        {face === "front" ? (
-          <View style={styles.face}>
-            <Text style={styles.word}>{word.word}</Text>
-            <Text style={styles.romanization}>{word.romanization}</Text>
+    <View style={styles.wrap}>
+      <Pressable onPress={onFlip} disabled={busy}>
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              transform: [{ perspective: 1000 }, { rotateY }, { scaleX }],
+            },
+          ]}
+        >
+          {face === "front" ? (
+            <View style={styles.face}>
+              <Text style={styles.word}>{word.word}</Text>
+              <Text style={styles.romanization}>{word.romanization}</Text>
 
-            <View style={styles.exampleSection}>
-              <Text style={styles.exampleLabel}>in a message</Text>
-              <View style={styles.exampleBubble}>
-                <Text style={styles.exampleMessage}>"{word.exampleMessage}"</Text>
+              <View style={styles.exampleSection}>
+                <Text style={styles.exampleLabel}>in a message</Text>
+                <View style={styles.exampleBubble}>
+                  <Text style={styles.exampleMessage}>
+                    "{word.exampleMessage}"
+                  </Text>
+                </View>
               </View>
+
+              <Text style={styles.hint}>tap to flip ✦</Text>
             </View>
+          ) : (
+            <View style={styles.face}>
+              <Text style={styles.word}>{word.word}</Text>
+              <Text style={styles.romanization}>{word.romanization}</Text>
+              <Text style={styles.meaning}>{word.meaning}</Text>
 
-            <Text style={styles.hint}>tap to flip ✦</Text>
-          </View>
-        ) : (
-          <View style={styles.face}>
-            <Text style={styles.word}>{word.word}</Text>
-            <Text style={styles.romanization}>{word.romanization}</Text>
-            <Text style={styles.meaning}>{word.meaning}</Text>
-
-            <View style={styles.exampleSection}>
-              <Text style={styles.exampleLabel}>in a message</Text>
-              <View style={styles.exampleBubble}>
-                <Text style={styles.exampleMessage}>
-                  "{word.exampleMessage}"
-                  {word.exampleTranslation ? (
-                    <Text style={styles.exampleTranslation}>
-                      {" "}
-                      → "{word.exampleTranslation}"
-                    </Text>
-                  ) : null}
-                </Text>
+              <View style={styles.exampleSection}>
+                <Text style={styles.exampleLabel}>in a message</Text>
+                <View style={styles.exampleBubble}>
+                  <Text style={styles.exampleMessage}>
+                    "{word.exampleMessage}"
+                    {word.exampleTranslation ? (
+                      <Text style={styles.exampleTranslation}>
+                        {" "}
+                        → "{word.exampleTranslation}"
+                      </Text>
+                    ) : null}
+                  </Text>
+                </View>
               </View>
+
+              <Text style={styles.sectionLabel}>VIBE METER</Text>
+              <VibeMeter
+                friends={word.vibeFriends}
+                strangers={word.vibeStrangers}
+                formal={word.vibeFormal}
+              />
+
+              <HintBox message={word.culturalNote} />
+
+              <Text style={styles.hint}>tap to flip back</Text>
             </View>
-
-            <Text style={styles.sectionLabel}>VIBE METER</Text>
-            <VibeMeter
-              friends={word.vibeFriends}
-              strangers={word.vibeStrangers}
-              formal={word.vibeFormal}
-            />
-
-            <HintBox message={word.culturalNote} />
-
-            <Text style={styles.hint}>tap to flip back</Text>
-          </View>
-        )}
-      </Animated.View>
-    </Pressable>
+          )}
+        </Animated.View>
+      </Pressable>
+      {onToggleBookmark ? (
+        <Pressable
+          onPress={onToggleBookmark}
+          hitSlop={10}
+          style={styles.bookmarkBtn}
+        >
+          <Feather
+            name="bookmark"
+            size={18}
+            color={bookmarked ? colors.primary : colors.textMuted}
+          />
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrap: {
+    position: "relative",
+  },
   card: {
     backgroundColor: colors.surface,
     borderWidth: 0.5,
@@ -149,11 +178,19 @@ const styles = StyleSheet.create({
   face: {
     gap: spacing.sm,
   },
+  bookmarkBtn: {
+    position: "absolute",
+    top: spacing.md,
+    right: spacing.md,
+    padding: spacing.xs,
+    zIndex: 2,
+  },
   word: {
     color: colors.primary,
     fontSize: fontSize.display,
     fontWeight: fontWeight.medium,
     marginTop: spacing.xs,
+    paddingRight: 28,
   },
   romanization: {
     color: colors.primaryFaint,

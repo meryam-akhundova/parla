@@ -31,7 +31,7 @@ export function OnboardingGenderScreen() {
         },
       ]}
     >
-      <StepRow currentStep={1} />
+      <StepRow currentStep={1} totalSteps={6} />
 
       <Text style={styles.sparkle}>✦  ✦</Text>
       <Text style={styles.title}>how should friends address you?</Text>

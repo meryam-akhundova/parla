@@ -18,11 +18,14 @@ export type RootStackParamList = {
   OnboardingGender: undefined;
   OnboardingGoal: undefined;
   OnboardingPace: undefined;
+  OnboardingSwearWords: undefined;
   OnboardingFirstWord: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   SlangDrop: undefined;
   VibeCheck: undefined;
-  EarTraining: undefined;
+  Unpack: undefined;
+  Review: undefined;
+  Bookmarks: undefined;
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;

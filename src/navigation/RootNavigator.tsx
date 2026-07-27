@@ -8,7 +8,9 @@ import { colors } from "../theme/theme";
 import { MainTabs } from "./MainTabs";
 import { SlangDropScreen } from "../screens/SlangDropScreen";
 import { VibeCheckScreen } from "../screens/VibeCheckScreen";
-import { EarTrainingScreen } from "../screens/EarTrainingScreen";
+import { UnpackScreen } from "../screens/UnpackScreen";
+import { ReviewScreen } from "../screens/ReviewScreen";
+import { BookmarksScreen } from "../screens/BookmarksScreen";
 import { SplashScreen } from "../screens/onboarding/SplashScreen";
 import { SignInScreen } from "../screens/auth/SignInScreen";
 import { SignUpScreen } from "../screens/auth/SignUpScreen";
@@ -16,6 +18,7 @@ import { OnboardingLanguageScreen } from "../screens/onboarding/OnboardingLangua
 import { OnboardingGenderScreen } from "../screens/onboarding/OnboardingGenderScreen";
 import { OnboardingGoalScreen } from "../screens/onboarding/OnboardingGoalScreen";
 import { OnboardingPaceScreen } from "../screens/onboarding/OnboardingPaceScreen";
+import { OnboardingSwearWordsScreen } from "../screens/onboarding/OnboardingSwearWordsScreen";
 import { OnboardingFirstWordScreen } from "../screens/onboarding/OnboardingFirstWordScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -62,6 +65,10 @@ export default function RootNavigator() {
             <Stack.Screen name="OnboardingGoal" component={OnboardingGoalScreen} />
             <Stack.Screen name="OnboardingPace" component={OnboardingPaceScreen} />
             <Stack.Screen
+              name="OnboardingSwearWords"
+              component={OnboardingSwearWordsScreen}
+            />
+            <Stack.Screen
               name="OnboardingFirstWord"
               component={OnboardingFirstWordScreen}
             />
@@ -72,7 +79,9 @@ export default function RootNavigator() {
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="SlangDrop" component={SlangDropScreen} />
             <Stack.Screen name="VibeCheck" component={VibeCheckScreen} />
-            <Stack.Screen name="EarTraining" component={EarTrainingScreen} />
+            <Stack.Screen name="Unpack" component={UnpackScreen} />
+            <Stack.Screen name="Review" component={ReviewScreen} />
+            <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
           </>
         )}
       </Stack.Navigator>

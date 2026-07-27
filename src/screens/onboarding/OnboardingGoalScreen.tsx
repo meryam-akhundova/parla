@@ -56,7 +56,7 @@ export function OnboardingGoalScreen() {
         },
       ]}
     >
-      <StepRow currentStep={2} />
+      <StepRow currentStep={2} totalSteps={6} />
 
       <Text style={styles.sparkle}>✦  ✦</Text>
       <Text style={styles.title}>what's your vibe?</Text>

@@ -11,7 +11,8 @@ import { Button } from "../components/Button";
 import { fetchSlangWords } from "../lib/slang";
 import { sessionSizeFromPace } from "../lib/sessionSize";
 import { pickSessionWords } from "../lib/pickSessionWords";
-import { fetchSeenWordIds, markWordsSeen } from "../lib/wordProgress";
+import { fetchSeenWordIds, markWordsSeen, setWordBookmarked, fetchBookmarkIds } from "../lib/wordProgress";
+import { bumpDailyActivity } from "../lib/dailyActivity";
 import type { SlangWord } from "../data/types";
 import { useAuthStore } from "../store/authStore";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
@@ -20,6 +21,10 @@ export function SlangDropScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const insets = useSafeAreaInsets();
   const pace = useAuthStore((s) => s.profile?.pace);
+  const language = useAuthStore((s) => s.profile?.language ?? "turkish");
+  const includeSwearWords = useAuthStore(
+    (s) => s.profile?.include_swear_words === true,
+  );
   const awardSlangDropComplete = useAuthStore((s) => s.awardSlangDropComplete);
 
   const [words, setWords] = useState<SlangWord[]>([]);
@@ -28,14 +33,16 @@ export function SlangDropScreen() {
   const [loading, setLoading] = useState(true);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      const [{ data, error: fetchError }, seen] = await Promise.all([
-        fetchSlangWords(),
+      const [{ data, error: fetchError }, seen, marks] = await Promise.all([
+        fetchSlangWords(language, { includeSwearWords }),
         fetchSeenWordIds(),
+        fetchBookmarkIds(),
       ]);
       if (cancelled) return;
 
@@ -54,13 +61,14 @@ export function SlangDropScreen() {
       const size = sessionSizeFromPace(pace);
       const avoidIds = new Set(seen.ids);
       setWords(pickSessionWords(data, size, { avoidIds }));
+      setBookmarks(marks.ids);
       setLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [pace]);
+  }, [language, pace, includeSwearWords]);
 
   const word = words[index] ?? null;
   const total = words.length;
@@ -70,6 +78,7 @@ export function SlangDropScreen() {
     if (finishing || !word) return;
     setFinishing(true);
     await markWordsSeen([word.id]);
+    await bumpDailyActivity("slang");
     await awardSlangDropComplete();
     navigation.goBack();
   };
@@ -82,8 +91,29 @@ export function SlangDropScreen() {
     }
     const currentId = word.id;
     void markWordsSeen([currentId]);
+    void bumpDailyActivity("slang");
     setIndex((i) => i + 1);
     setFlipped(false);
+  };
+
+  const onToggleBookmark = async () => {
+    if (!word) return;
+    const next = !bookmarks.has(word.id);
+    setBookmarks((prev) => {
+      const copy = new Set(prev);
+      if (next) copy.add(word.id);
+      else copy.delete(word.id);
+      return copy;
+    });
+    const err = await setWordBookmarked(word.id, next);
+    if (err) {
+      setBookmarks((prev) => {
+        const copy = new Set(prev);
+        if (next) copy.delete(word.id);
+        else copy.add(word.id);
+        return copy;
+      });
+    }
   };
 
   if (loading) {
@@ -139,6 +169,8 @@ export function SlangDropScreen() {
           word={word}
           flipped={flipped}
           onFlip={() => setFlipped((f) => !f)}
+          bookmarked={bookmarks.has(word.id)}
+          onToggleBookmark={() => void onToggleBookmark()}
         />
       </ScrollView>
 

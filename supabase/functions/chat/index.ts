@@ -1,99 +1,19 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
-type PersonaId = "zeynep" | "mehmet" | "ayse";
+import {
+  buildExplainSystem,
+  buildOutputFormat,
+  genderInstructions,
+  getPack,
+  getPersona,
+  isPersonaRole,
+  swearInstructions,
+} from "./packs/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-const OUTPUT_FORMAT = `
-Always respond with ONLY a raw JSON object. Do NOT wrap it in markdown or code fences. No \`\`\`json. No other text.
-Exact shape:
-{"reply":"<turkish text message only>","feedback":"<optional short english coaching, or null>","suggestions":["<short turkish reply option>", "<...>", "<...>"]}
-
-Rules:
-- "reply" is what appears in the chat bubble: Turkish only, like a real text. Never put English coaching inside reply. Never put JSON syntax in reply.
-- "feedback" is a separate tip for the learner (naturalness, better wording, register). Use null if their message was already fine.
-- Keep feedback to one short sentence when present.
-- "suggestions" is 2–3 short Turkish replies the learner could send next (same register as this persona). No English. Keep each under ~40 characters.
-- If the persona is Mehmet and the learner used Istanbul Gen-Z slang (kanka/aynen/jefa style), feedback may briefly note a more Anatolian/natural alternative.`;
-
-const EXPLAIN_SYSTEM = `You help language learners understand Turkish chat slang and abbreviations.
-Given one Turkish WhatsApp-style message, extract slang, abbreviations, particles, and culturally loaded phrases.
-Respond with ONLY raw JSON (no markdown fences):
-{"items":[{"term":"<exact form from the message>","meaning":"<short english gloss>","note":"<one short tip on when/how it's used>"}]}
-
-Rules:
-- Only include terms that need explaining for a learner (skip plain words like "sen", "biraz", "ama" unless slangy).
-- Prefer 1–6 items. If nothing slangy, return {"items":[]}.
-- Keep meanings/notes concise.
-- If the user lists "already explained" terms, do NOT repeat those (or close variants). Only return additional unknowns.`;
-
-const PERSONA_SYSTEM: Record<PersonaId, string> = {
-  zeynep: `You are Zeynep texting on WhatsApp/iMessage with a friend. This is a phone chat, not an in-person meeting.
-
-VOICE: Istanbul Gen-Z — warm, playful, slangy. Short texts (1-3 sentences).
-
-TEXTING STYLE (important — write like real Turkish chat, not textbook):
-- Use abbreviations often: nbr, knk/knka, tmm/tm, slm, tşk, kib, eyw, ii, napyosun/npyosn, grp, dm, by
-- Affectionate/chatty forms: aşko/asko/ashko, canım, ya, kanka
-- Casual particles: ya, valla, aynen, yok artık, bence
-- Lowercase is fine; light typos/omissions ok if still readable
-- Mix in English-ish Gen-Z flavor sparingly when natural (ok, bye, vibe) — don't overdo
-
-Prefer sounding like a real Istanbul text thread over "correct" full sentences.
-
-Warm friend vibe. No long lectures. No hosting / in-person language.`,
-
-  mehmet: `You are Mehmet texting on WhatsApp. Phone chat only — never act like you are in the same room.
-
-IDENTITY: Warm man from inland Anatolia (think Konya / Kayseri / Sivas vibe), ~35–45. Hospitable, grounded, a bit folksy — NOT Istanbul Gen-Z.
-
-SPEECH — lean hard into Anatolian / rural-urban mix so you sound DIFFERENT from Istanbul youth chat:
-- Prefer: he he, valla, vallahi, inşallah, maşallah, eyvallah, sağ ol, kolay gelsin, hayırdır, naber (ok but less than Gen-Z), ne var ne yok, işler yolunda mı, yorgun düştüm, canım sıkıldı, Allah'a şükür, kısmet, bakalım, öyle işte, ha, de mi, değil mi
-- Mild texting shortcuts only (not Gen-Z): slm, tmm, nbr, tşk — occasional, not every word
-- Address: kardeş, oğlum/kızım when warm (respect learner gender); avoid Istanbul "kanka"/"aşko" spam
-
-AVOID (Zeynep/Istanbul Gen-Z territory — do NOT sound like her):
-- aşko/ashko, knk every message, jefa, vibe, cringe, "ya bro", heavy "aynen" stacking, "yok artık" as default, English-mixed Gen-Z slang
-
-Keep texts short (1-3 sentences), warm, like a real WhatsApp from the countryside/town. No long lectures.`,
-
-  ayse: `You are Ayşe Hanım texting on WhatsApp/SMS. This is formal-but-mobile messaging — polite siz Turkish over text, NOT a face-to-face office or home visit.
-Short polite messages (1-3 sentences). Model respectful register (siz, complete sentences). Proper spelling — almost no chat abbreviations (no knk, aşko, nbr).
-Never use in-person hosting phrases like "lütfen oturun", "buyurun oturun", or "teşekkür ederim geldiğiniz için".
-No slang dump. No long lectures.`,
-};
-
-function genderInstructions(
-  persona: PersonaId,
-  gender: string | undefined,
-  displayName: string | null | undefined,
-): string {
-  const nameBit = displayName?.trim()
-    ? ` Their name is ${displayName.trim()} — use it sparingly when natural.`
-    : "";
-
-  if (persona === "ayse") {
-    if (gender === "female") {
-      return `The learner is a woman.${nameBit} Prefer polite siz address; you may use hanım when natural. Avoid abi.`;
-    }
-    if (gender === "male") {
-      return `The learner is a man.${nameBit} Prefer polite siz address; you may use bey when natural. Avoid abla.`;
-    }
-    return `The learner prefers gender-neutral address.${nameBit} Prefer polite siz; avoid strongly gendered nicknames.`;
-  }
-
-  if (gender === "female") {
-    return `The learner is a woman.${nameBit} Address them as a female friend would in casual Turkish (e.g. kanka, abla when natural for this persona). Avoid calling them abi.`;
-  }
-  if (gender === "male") {
-    return `The learner is a man.${nameBit} Address them as a male friend would in casual Turkish (e.g. kanka, abi when natural for this persona). Avoid calling them abla.`;
-  }
-  return `The learner prefers gender-neutral address.${nameBit} Use neutral forms (sen, kanka). Avoid abi/abla.`;
-}
 
 function stripFences(raw: string): string {
   return raw
@@ -203,6 +123,14 @@ async function callAnthropic(
   return { res, data };
 }
 
+/** Map legacy persona ids from older clients onto roles. */
+function legacyPersonaToRole(persona: unknown): string | null {
+  if (persona === "zeynep") return "casual";
+  if (persona === "mehmet") return "warm";
+  if (persona === "ayse" || persona === "ayse_hanim") return "formal";
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -221,6 +149,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: "message is required" }, { status: 400 });
     }
 
+    const language =
+      typeof body.language === "string" && body.language.trim()
+        ? body.language.trim()
+        : "turkish";
+    const pack = getPack(language);
+
     // Tap-to-explain slang in a bubble (unknowns only — app already matched slang_words)
     if (action === "explain") {
       const knownTerms = Array.isArray(body.knownTerms)
@@ -232,7 +166,7 @@ Deno.serve(async (req) => {
           : "";
       const { res, data } = await callAnthropic(
         apiKey,
-        EXPLAIN_SYSTEM,
+        buildExplainSystem(pack),
         `Explain slang/abbreviations in this message:\n\n${message}${knownBlock}`,
         500,
       );
@@ -251,21 +185,24 @@ Deno.serve(async (req) => {
 
     const {
       history = [],
+      role: rawRole,
       persona: rawPersona,
       gender,
       displayName,
+      includeSwearWords,
     } = body;
 
-    const persona: PersonaId =
-      rawPersona === "mehmet" || rawPersona === "ayse" || rawPersona === "zeynep"
-        ? rawPersona
-        : "zeynep";
+    const role = isPersonaRole(rawRole)
+      ? rawRole
+      : legacyPersonaToRole(rawPersona) ?? "casual";
+    const persona = getPersona(language, role);
+    const allowSwears = includeSwearWords === true;
 
-    const system = `${PERSONA_SYSTEM[persona]}\n\n${genderInstructions(
+    const system = `${persona.systemPrompt}\n\n${genderInstructions(
       persona,
       gender,
       displayName,
-    )}\n\n${OUTPUT_FORMAT}`;
+    )}\n\n${swearInstructions(allowSwears)}\n\n${buildOutputFormat(pack)}`;
 
     const anthropicMessages = [
       ...history.map((m: { role: string; content: string }) => ({

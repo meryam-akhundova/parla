@@ -14,6 +14,8 @@ import { useAuthStore } from "../../store/authStore";
 
 export function OnboardingFirstWordScreen() {
   const saveOnboarding = useAuthStore((s) => s.saveOnboarding);
+  const draftLanguage = useAuthStore((s) => s.draft.language);
+  const includeSwearWords = useAuthStore((s) => s.draft.includeSwearWords);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [flipped, setFlipped] = useState(false);
@@ -28,7 +30,9 @@ export function OnboardingFirstWordScreen() {
     let cancelled = false;
 
     (async () => {
-      const { data, error: fetchError } = await fetchSlangWords();
+      const { data, error: fetchError } = await fetchSlangWords(draftLanguage, {
+        includeSwearWords,
+      });
       if (cancelled) return;
 
       if (fetchError) {
@@ -46,7 +50,7 @@ export function OnboardingFirstWordScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [draftLanguage, includeSwearWords]);
 
   const finishOnboarding = async () => {
     if (!word || !flipped) return;
@@ -103,7 +107,7 @@ export function OnboardingFirstWordScreen() {
         },
       ]}
     >
-      <StepRow currentStep={4} />
+      <StepRow currentStep={5} totalSteps={6} />
 
       <View style={styles.header}>
         <Text style={styles.sparkle}>✦  ✦  ✦</Text>

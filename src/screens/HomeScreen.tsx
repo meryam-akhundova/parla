@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -8,9 +8,14 @@ import type { MainTabNavigationProp } from "../navigation/types";
 import { LessonCard } from "../components/LessonCard";
 import { avatarInitialFromName } from "../lib/avatar";
 import { fetchSlangWords } from "../lib/slang";
-import { fetchSeenWordIds } from "../lib/wordProgress";
+import { fetchProgressStats } from "../lib/wordProgress";
+import {
+  fetchTodayActivity,
+  homeProgressFromActivity,
+} from "../lib/dailyActivity";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 
+import type { SlangWord } from "../data/types";
 import { useAuthStore } from "../store/authStore";
 
 const DAYS = [
@@ -23,10 +28,70 @@ const DAYS = [
   "saturday",
 ];
 
+/** Fallback teasers when the word fetch is still loading / empty. */
+const HOME_TEASERS: Record<
+  string,
+  { slang: string; vibe: string; unpack: string }
+> = {
+  turkish: {
+    slang: "ya bro · eyw · kanka · lan",
+    vibe: "aynen · kesinlikle · yok artık",
+    unpack: "ya bro geliyom · eyw kral",
+  },
+  french: {
+    slang: "mdr · wesh · grave · tkt",
+    vibe: "ouf · relou · nickel · flemme",
+    unpack: "tkt j'arrive · grave relou",
+  },
+  spanish: {
+    slang: "qué onda · chido · wey · vale",
+    vibe: "jajaja · no manches · qué fuerte",
+    unpack: "qué onda wey · vale dale",
+  },
+  azerbaijani: {
+    slang: "zəhmli · neynirsen · vallah · lap",
+    vibe: "salam · maşallah · boşla",
+    unpack: "neynirsen vallah · lap boşla",
+  },
+  italian: {
+    slang: "raga · vabbè · boh · pazzesco",
+    vibe: "che palle · top · una bomba",
+    unpack: "raga boh · vabbè top",
+  },
+};
+
 function getGreeting(hour: number): string {
   if (hour < 12) return "good morning";
   if (hour < 17) return "good afternoon";
   return "good evening";
+}
+
+function joinWords(words: SlangWord[], count: number): string {
+  return words
+    .slice(0, count)
+    .map((w) => w.word)
+    .join(" · ");
+}
+
+function teasersFor(language: string, words: SlangWord[]) {
+  const fallback = HOME_TEASERS[language] ?? HOME_TEASERS.turkish;
+  if (words.length === 0) return fallback;
+
+  const reactions = words.filter(
+    (w) => w.category === "reaction" || w.category === "expression",
+  );
+  const withLines = words.filter((w) => w.exampleMessage.trim().length >= 8);
+
+  return {
+    slang: joinWords(words, 4) || fallback.slang,
+    vibe:
+      joinWords(reactions.length >= 3 ? reactions : words, 3) || fallback.vibe,
+    unpack:
+      withLines
+        .slice(0, 2)
+        .map((w) => w.exampleMessage)
+        .join(" · ") || fallback.unpack,
+  };
 }
 
 export function HomeScreen() {
@@ -36,6 +101,8 @@ export function HomeScreen() {
 
   const name = profile?.display_name?.trim() || "you";
   const language = profile?.language ?? "turkish";
+  const includeSwearWords = profile?.include_swear_words === true;
+  const pace = profile?.pace;
 
   const now = new Date();
   const dayName = DAYS[now.getDay()];
@@ -44,32 +111,54 @@ export function HomeScreen() {
   const streakDays = profile?.streak_days ?? 0;
   const shineScore = profile?.shine_score ?? 0;
 
-  const [totalWords, setTotalWords] = useState(0);
-  const [seenCount, setSeenCount] = useState(0);
+  const [pool, setPool] = useState<SlangWord[]>([]);
+  const [slangProgress, setSlangProgress] = useState(0);
+  const [vibeProgress, setVibeProgress] = useState(0);
+  const [earProgress, setEarProgress] = useState(0);
+  const [target, setTarget] = useState(5);
+  const [dueCount, setDueCount] = useState(0);
+  const [bookmarkCount, setBookmarkCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       (async () => {
-        const [words, seen] = await Promise.all([
-          fetchSlangWords(),
-          fetchSeenWordIds(),
+        const [words, activity, stats] = await Promise.all([
+          fetchSlangWords(language, { includeSwearWords }),
+          fetchTodayActivity(),
+          fetchProgressStats(),
         ]);
         if (!active) return;
-        setTotalWords(words.data.length);
-        // Prefer live table count; fall back to profile if fetch fails
-        setSeenCount(
-          seen.error ? (profile?.words_learned ?? 0) : seen.ids.length,
+
+        setPool(words.data);
+        const langIds = new Set(words.data.map((w) => w.id));
+        const scoped =
+          langIds.size > 0
+            ? await fetchProgressStats(langIds)
+            : stats;
+        if (!active) return;
+
+        const progress = homeProgressFromActivity(
+          activity.activity,
+          pace,
+          scoped.stats.dueCount,
         );
+        setSlangProgress(progress.slang);
+        setVibeProgress(progress.vibe);
+        setEarProgress(progress.ear);
+        setTarget(progress.target);
+        setDueCount(progress.dueCount);
+        setBookmarkCount(scoped.stats.bookmarkedCount);
       })();
       return () => {
         active = false;
       };
-    }, [profile?.words_learned]),
+    }, [language, includeSwearWords, pace]),
   );
 
-  const progressFilled =
-    totalWords > 0 ? Math.min(1, seenCount / totalWords) : 0;
+  const livePool =
+    pool.length > 0 && pool[0]?.language === language ? pool : [];
+  const teasers = teasersFor(language, livePool);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
@@ -79,10 +168,12 @@ export function HomeScreen() {
       >
         <View style={styles.header}>
           <View style={styles.headerText}>
-          <Text style={styles.eyebrow}>{dayName} · {language}</Text>
-          <Text style={styles.greeting}>
-            {greeting}, {name} <Text style={styles.spark}>✦</Text>
-          </Text>
+            <Text style={styles.eyebrow}>
+              {dayName} · {language}
+            </Text>
+            <Text style={styles.greeting}>
+              {greeting}, {name} <Text style={styles.spark}>✦</Text>
+            </Text>
           </View>
           <View style={styles.avatar}>
             <Text style={styles.avatarInitial}>
@@ -102,15 +193,49 @@ export function HomeScreen() {
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>TODAY'S DROPS</Text>
+        {(dueCount > 0 || bookmarkCount > 0) && (
+          <View style={styles.quickRow}>
+            {dueCount > 0 ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.quickCard,
+                  styles.reviewCard,
+                  pressed && styles.quickPressed,
+                ]}
+                onPress={() => navigation.navigate("Review")}
+              >
+                <Text style={styles.reviewLabel}>review due</Text>
+                <Text style={styles.quickValue}>{dueCount} words</Text>
+              </Pressable>
+            ) : null}
+            {bookmarkCount > 0 ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.quickCard,
+                  styles.bookmarkCard,
+                  pressed && styles.quickPressed,
+                ]}
+                onPress={() => navigation.navigate("Bookmarks")}
+              >
+                <Text style={styles.bookmarkLabel}>saved</Text>
+                <Text style={styles.quickValueBk}>{bookmarkCount}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+
+        <Text style={styles.sectionLabel}>
+          TODAY'S DROPS · {target} each
+        </Text>
 
         <LessonCard
           tag="✦ slang drop"
           tagVariant="purple"
           title="texting like a local"
-          subtitle="ya bro · eyw · kanka · lan"
+          subtitle={teasers.slang}
           variant="purple"
-          progressFilled={progressFilled}
+          progressFilled={slangProgress}
+          progressTotal={target}
           icon={
             <Feather
               name="message-square"
@@ -125,24 +250,26 @@ export function HomeScreen() {
           tag="vibe check"
           tagVariant="coral"
           title="reacting naturally"
-          subtitle="aynen · kesinlikle · yok artık"
+          subtitle={teasers.vibe}
           variant="coral"
-          progressFilled={seenCount > 0 ? progressFilled : 0}
+          progressFilled={vibeProgress}
+          progressTotal={target}
           icon={<Feather name="smile" size={18} color={colors.coralText} />}
           onPress={() => navigation.navigate("VibeCheck")}
         />
 
         <LessonCard
-          tag="ear training"
+          tag="unpack"
           tagVariant="teal"
-          title="catch the flow"
-          subtitle="fast speech · filler sounds"
+          title="translate the slang line"
+          subtitle={teasers.unpack}
           variant="neutral"
-          progressFilled={seenCount > 0 ? progressFilled : 0}
+          progressFilled={earProgress}
+          progressTotal={target}
           icon={
-            <Feather name="headphones" size={18} color={colors.tealStrong} />
+            <Feather name="type" size={18} color={colors.tealStrong} />
           }
-          onPress={() => navigation.navigate("EarTraining")}
+          onPress={() => navigation.navigate("Unpack")}
         />
       </ScrollView>
     </View>
@@ -201,7 +328,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   streakRight: {
     alignItems: "flex-end",
@@ -215,6 +342,46 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: fontWeight.medium,
     color: colors.amberStrong,
+  },
+  quickRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  quickCard: {
+    flex: 1,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: 14,
+  },
+  reviewCard: {
+    backgroundColor: colors.coralBg,
+  },
+  bookmarkCard: {
+    backgroundColor: colors.primaryLight,
+  },
+  quickPressed: {
+    opacity: 0.85,
+  },
+  reviewLabel: {
+    fontSize: fontSize.label,
+    color: colors.coralText,
+    marginBottom: 2,
+  },
+  bookmarkLabel: {
+    fontSize: fontSize.label,
+    color: colors.primaryText,
+    marginBottom: 2,
+  },
+  quickValue: {
+    fontSize: fontSize.headingLg,
+    fontWeight: fontWeight.medium,
+    color: colors.coralStrong,
+  },
+  quickValueBk: {
+    fontSize: fontSize.headingLg,
+    fontWeight: fontWeight.medium,
+    color: colors.primaryText,
   },
   sectionLabel: {
     fontSize: fontSize.micro,

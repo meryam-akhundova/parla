@@ -5,19 +5,28 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { RootNavigationProp } from "../../navigation/types";
 import { Button } from "../../components/Button";
-import { HintBox } from "../../components/HintBox";
 import { StepRow } from "./StepRow";
-import { APP_LANGUAGES } from "../../data/languages";
+import { useAuthStore } from "../../store/authStore";
 import { colors, spacing, radius, fontSize, fontWeight } from "../../theme/theme";
 
-import { useAuthStore } from "../../store/authStore";
+const OPTIONS: { id: boolean; label: string; sub: string }[] = [
+  {
+    id: false,
+    label: "keep it clean",
+    sub: "casual slang only — no swear words or strong profanity",
+  },
+  {
+    id: true,
+    label: "include swears",
+    sub: "learn the spicy stuff too, with coaching on when not to use it",
+  },
+];
 
-export function OnboardingLanguageScreen() {
+export function OnboardingSwearWordsScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const insets = useSafeAreaInsets();
-  const [selected, setSelected] = useState("turkish");
-
   const setDraft = useAuthStore((s) => s.setDraft);
+  const [selected, setSelected] = useState(false);
 
   return (
     <View
@@ -29,42 +38,43 @@ export function OnboardingLanguageScreen() {
         },
       ]}
     >
-      <StepRow currentStep={0} totalSteps={6} />
+      <StepRow currentStep={4} totalSteps={6} />
 
-      <Text style={styles.sparkle}>✦</Text>
-      <Text style={styles.title}>which language?</Text>
-      <Text style={styles.subtitle}>pick one to start — add more later</Text>
+      <Text style={styles.sparkle}>✦  ✦</Text>
+      <Text style={styles.title}>teach swear words?</Text>
+      <Text style={styles.subtitle}>
+        you can change this anytime in profile
+      </Text>
 
-      <View style={styles.grid}>
-        {APP_LANGUAGES.map((lang) => {
-          const isSelected = selected === lang.id;
+      <View style={styles.options}>
+        {OPTIONS.map((option) => {
+          const isSelected = selected === option.id;
           return (
             <Pressable
-              key={lang.id}
-              disabled={!lang.available}
-              onPress={() => setSelected(lang.id)}
-              style={[
-                styles.card,
-                isSelected && styles.cardSelected,
-                !lang.available && styles.cardDisabled,
-              ]}
+              key={String(option.id)}
+              style={[styles.option, isSelected && styles.optionSelected]}
+              onPress={() => setSelected(option.id)}
             >
-              <Text style={styles.flag}>{lang.flag}</Text>
-              <Text style={styles.langName}>{lang.name}</Text>
-              <Text style={styles.langSub}>{lang.sub}</Text>
+              <Text
+                style={[
+                  styles.optionLabel,
+                  isSelected && styles.optionLabelSelected,
+                ]}
+              >
+                {option.label}
+              </Text>
+              <Text style={styles.optionSub}>{option.sub}</Text>
             </Pressable>
           );
         })}
       </View>
 
-      <HintBox message="already speak it formally? parla works for fluent speakers too — we'll tune to your level." />
-
       <View style={styles.footer}>
         <Button
           label="continue"
           onPress={() => {
-            setDraft({ language: selected });
-            navigation.navigate("OnboardingGender");
+            setDraft({ includeSwearWords: selected });
+            navigation.navigate("OnboardingFirstWord");
           }}
         />
       </View>
@@ -82,6 +92,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: colors.primary,
     textAlign: "center",
+    letterSpacing: 6,
     marginBottom: spacing.sm,
   },
   title: {
@@ -97,44 +108,33 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 18,
   },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  options: {
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    flex: 1,
   },
-  card: {
-    width: "48%",
-    flexGrow: 1,
+  option: {
     borderWidth: 0.5,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: 10,
-    backgroundColor: colors.white,
-    alignItems: "center",
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
   },
-  cardSelected: {
-    borderWidth: 1.5,
+  optionSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primaryLight,
   },
-  cardDisabled: {
-    opacity: 0.45,
-  },
-  flag: {
-    fontSize: 22,
-    marginBottom: spacing.xs,
-  },
-  langName: {
-    fontSize: fontSize.small,
+  optionLabel: {
+    fontSize: fontSize.heading,
     fontWeight: fontWeight.medium,
     color: colors.textPrimary,
+    marginBottom: 4,
   },
-  langSub: {
-    fontSize: fontSize.micro,
+  optionLabelSelected: {
+    color: colors.primaryText,
+  },
+  optionSub: {
+    fontSize: fontSize.small,
     color: colors.textSecondary,
-    marginTop: 2,
   },
   footer: {
     marginTop: "auto",

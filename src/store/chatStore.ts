@@ -2,68 +2,76 @@ import { create } from "zustand";
 import {
   getPersona,
   pickOpener,
-  type PersonaId,
+  type PersonaRole,
 } from "../data/personas";
 
 export type UiMessage =
   | { id: string; role: "them" | "you"; text: string }
   | { id: string; role: "badge"; text: string };
 
-export function makeOpenerMessage(personaId: PersonaId): UiMessage {
-  const persona = getPersona(personaId);
+export function threadKey(language: string, role: PersonaRole): string {
+  return `${language}:${role}`;
+}
+
+export function makeOpenerMessage(
+  language: string,
+  role: PersonaRole,
+): UiMessage {
+  const persona = getPersona(language, role);
   return {
-    id: `opener-${personaId}-${Date.now()}`,
+    id: `opener-${language}-${role}-${Date.now()}`,
     role: "them",
     text: pickOpener(persona),
   };
 }
 
-function emptyThreads(): Record<PersonaId, UiMessage[]> {
-  return {
-    zeynep: [],
-    mehmet: [],
-    ayse: [],
-  };
-}
-
 type ChatUiState = {
   /** Session-only — resets when the app process dies */
-  selectedPersona: PersonaId;
-  threads: Record<PersonaId, UiMessage[]>;
-  setPersona: (id: PersonaId) => void;
+  selectedRole: PersonaRole;
+  threads: Record<string, UiMessage[]>;
+  setRole: (role: PersonaRole) => void;
   setMessages: (
     updater: UiMessage[] | ((prev: UiMessage[]) => UiMessage[]),
-    personaId?: PersonaId,
+    language: string,
+    role?: PersonaRole,
   ) => void;
-  resetThread: (personaId?: PersonaId) => void;
+  resetThread: (language: string, role?: PersonaRole) => void;
+  getThread: (language: string, role?: PersonaRole) => UiMessage[];
 };
 
 export const useChatStore = create<ChatUiState>((set, get) => ({
-  selectedPersona: "zeynep",
-  threads: emptyThreads(),
+  selectedRole: "casual",
+  threads: {},
 
-  setPersona: (id) => set({ selectedPersona: id }),
+  setRole: (role) => set({ selectedRole: role }),
 
-  setMessages: (updater, personaId) => {
-    const { selectedPersona, threads } = get();
-    const id = personaId ?? selectedPersona;
-    const prev = threads[id] ?? [];
+  getThread: (language, role) => {
+    const { selectedRole, threads } = get();
+    const key = threadKey(language, role ?? selectedRole);
+    return threads[key] ?? [];
+  },
+
+  setMessages: (updater, language, role) => {
+    const { selectedRole, threads } = get();
+    const r = role ?? selectedRole;
+    const key = threadKey(language, r);
+    const prev = threads[key] ?? [];
     const next = typeof updater === "function" ? updater(prev) : updater;
     set({
       threads: {
         ...threads,
-        [id]: next,
+        [key]: next,
       },
     });
   },
 
-  resetThread: (personaId) => {
-    const { selectedPersona, threads } = get();
-    const id = personaId ?? selectedPersona;
+  resetThread: (language, role) => {
+    const { selectedRole, threads } = get();
+    const key = threadKey(language, role ?? selectedRole);
     set({
       threads: {
         ...threads,
-        [id]: [],
+        [key]: [],
       },
     });
   },

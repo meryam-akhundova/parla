@@ -52,7 +52,7 @@ export function OnboardingPaceScreen() {
         },
       ]}
     >
-      <StepRow currentStep={3} />
+      <StepRow currentStep={3} totalSteps={6} />
 
       <Text style={styles.sparkle}>✦  ✦  ✦</Text>
       <Text style={styles.title}>how much time?</Text>
@@ -79,7 +79,7 @@ export function OnboardingPaceScreen() {
           label="continue"
           onPress={() => {
             setDraft({ pace: selectedPace });
-            navigation.navigate("OnboardingFirstWord");
+            navigation.navigate("OnboardingSwearWords");
           }}
         />
       </View>

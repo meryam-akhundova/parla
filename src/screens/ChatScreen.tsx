@@ -16,7 +16,11 @@ import { BubbleLeft } from "../components/BubbleLeft";
 import { BubbleRight } from "../components/BubbleRight";
 import { NaturalnessBadge } from "../components/NaturalnessBadge";
 import { TypingBubble } from "../components/TypingBubble";
-import { PERSONAS, getPersona, type PersonaId } from "../data/personas";
+import {
+  getPersona,
+  getPersonas,
+  type PersonaRole,
+} from "../data/personas";
 import {
   chatWithPersona,
   explainSlangInMessage,
@@ -26,6 +30,7 @@ import {
 import { useAuthStore } from "../store/authStore";
 import {
   makeOpenerMessage,
+  threadKey,
   useChatStore,
   type UiMessage,
 } from "../store/chatStore";
@@ -34,26 +39,31 @@ import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 /** Longer messages → longer typing indicator (capped). */
 function typingDelayMs(text: string): number {
   const len = text.trim().length;
-  const ms = 450 + len * 30;
-  return Math.min(3500, Math.max(650, ms));
+  // Rough WhatsApp feel: pause to "read" + ~45–55ms per character typed
+  const ms = 1100 + len * 50;
+  return Math.min(8500, Math.max(2200, ms));
 }
 
 export function ChatScreen() {
   const insets = useSafeAreaInsets();
   const profile = useAuthStore((s) => s.profile);
-  const selectedPersona = useChatStore((s) => s.selectedPersona);
-  const setPersona = useChatStore((s) => s.setPersona);
-  const messages = useChatStore((s) => s.threads[s.selectedPersona]);
+  const language = profile?.language ?? "turkish";
+  const selectedRole = useChatStore((s) => s.selectedRole);
+  const setRole = useChatStore((s) => s.setRole);
+  const threads = useChatStore((s) => s.threads);
+  const messages =
+    threads[threadKey(language, selectedRole)] ?? [];
   const setMessages = useChatStore((s) => s.setMessages);
   const resetThread = useChatStore((s) => s.resetThread);
-  const persona = getPersona(selectedPersona);
+  const personas = getPersonas(language);
+  const persona = getPersona(language, selectedRole);
 
   const [draft, setDraft] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>(
     persona.suggestedReplies,
   );
-  const [sendingFor, setSendingFor] = useState<PersonaId | null>(null);
-  const [introTypingFor, setIntroTypingFor] = useState<PersonaId | null>(null);
+  const [sendingFor, setSendingFor] = useState<string | null>(null);
+  const [introTypingFor, setIntroTypingFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [explainOpen, setExplainOpen] = useState(false);
   const [explainSource, setExplainSource] = useState("");
@@ -62,40 +72,42 @@ export function ChatScreen() {
   const [explainEnriching, setExplainEnriching] = useState(false);
   const [explainError, setExplainError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const activeKey = threadKey(language, selectedRole);
   const sending = sendingFor !== null;
   const showTyping =
-    sendingFor === selectedPersona || introTypingFor === selectedPersona;
+    sendingFor === activeKey || introTypingFor === activeKey;
   const canRestart = !showTyping && messages.length > 0;
 
   // First open (or first visit to a persona this session): typing, then opener
   useEffect(() => {
     if (messages.length > 0) return;
 
-    const personaId = selectedPersona;
-    const opener = makeOpenerMessage(personaId);
+    const role = selectedRole;
+    const key = threadKey(language, role);
+    const opener = makeOpenerMessage(language, role);
     let cancelled = false;
-    setIntroTypingFor(personaId);
+    setIntroTypingFor(key);
 
     const timer = setTimeout(() => {
       if (cancelled) return;
-      setMessages([opener], personaId);
-      setIntroTypingFor((current) => (current === personaId ? null : current));
+      setMessages([opener], language, role);
+      setIntroTypingFor((current) => (current === key ? null : current));
     }, typingDelayMs(opener.text));
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [selectedPersona, messages.length, setMessages]);
+  }, [language, selectedRole, messages.length, setMessages]);
 
-  // Reset starter chips when switching personas
+  // Reset starter chips when switching persona or language
   useEffect(() => {
-    setSuggestions(getPersona(selectedPersona).suggestedReplies);
-  }, [selectedPersona]);
+    setSuggestions(getPersona(language, selectedRole).suggestedReplies);
+  }, [language, selectedRole]);
 
-  const selectPersona = (id: PersonaId) => {
-    if (id === selectedPersona) return;
-    setPersona(id);
+  const selectRole = (role: PersonaRole) => {
+    if (role === selectedRole) return;
+    setRole(role);
     setError(null);
   };
 
@@ -105,7 +117,7 @@ export function ChatScreen() {
     setError(null);
     setIntroTypingFor(null);
     setSuggestions(persona.suggestedReplies);
-    resetThread(selectedPersona);
+    resetThread(language, selectedRole);
   };
 
   const explainMessage = async (text: string) => {
@@ -117,6 +129,7 @@ export function ChatScreen() {
     setExplainEnriching(false);
 
     const { items, error: explainErr } = await explainSlangInMessage(text, {
+      language,
       onLocalMatches: (localItems) => {
         setExplainItems(localItems);
         setExplainLoading(false);
@@ -147,7 +160,8 @@ export function ChatScreen() {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
 
-    const personaId = selectedPersona;
+    const role = selectedRole;
+    const key = threadKey(language, role);
     const historySnapshot = toHistory(messages);
     const youMsg: UiMessage = {
       id: `${Date.now()}-you`,
@@ -155,11 +169,11 @@ export function ChatScreen() {
       text: trimmed,
     };
 
-    setMessages((prev) => [...prev, youMsg], personaId);
+    setMessages((prev) => [...prev, youMsg], language, role);
     setDraft("");
     setSuggestions([]);
     setError(null);
-    setSendingFor(personaId);
+    setSendingFor(key);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
 
     const startedAt = Date.now();
@@ -169,14 +183,16 @@ export function ChatScreen() {
       suggestions: nextSuggestions,
       error: chatError,
     } = await chatWithPersona(trimmed, historySnapshot, {
-      persona: personaId,
+      language,
+      role,
       gender: profile?.gender ?? "neutral",
       displayName: profile?.display_name,
+      includeSwearWords: profile?.include_swear_words === true,
     });
 
     // Typing duration scales with reply length (API wait counts toward it)
     const elapsed = Date.now() - startedAt;
-    const targetMs = reply ? typingDelayMs(reply) : 800;
+    const targetMs = reply ? typingDelayMs(reply) : 2200;
     if (elapsed < targetMs) {
       await new Promise((r) => setTimeout(r, targetMs - elapsed));
     }
@@ -201,12 +217,12 @@ export function ChatScreen() {
         });
       }
       return next;
-    }, personaId);
+    }, language, role);
 
     if (nextSuggestions.length > 0) {
       setSuggestions(nextSuggestions);
     } else {
-      setSuggestions(getPersona(personaId).suggestedReplies);
+      setSuggestions(getPersona(language, role).suggestedReplies);
     }
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
   };
@@ -237,13 +253,13 @@ export function ChatScreen() {
       </View>
 
       <View style={styles.personaRow}>
-        {PERSONAS.map((p) => {
-          const selected = p.id === selectedPersona;
+        {personas.map((p) => {
+          const selected = p.role === selectedRole;
           return (
             <Pressable
-              key={p.id}
+              key={p.role}
               style={[styles.personaChip, selected && styles.personaChipSelected]}
-              onPress={() => selectPersona(p.id)}
+              onPress={() => selectRole(p.role)}
             >
               <Text
                 style={[
@@ -315,10 +331,10 @@ export function ChatScreen() {
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="reply in turkish..."
+            placeholder={`reply in ${language}...`}
             placeholderTextColor={colors.textMuted}
             style={styles.input}
-            editable={!sending && introTypingFor !== selectedPersona}
+            editable={!sending && introTypingFor !== activeKey}
             onSubmitEditing={() => void send(draft)}
           />
           <Pressable

@@ -1,12 +1,17 @@
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
+import type { MainTabNavigationProp } from "../navigation/types";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 import { Button } from "../components/Button";
 import { avatarInitialFromName } from "../lib/avatar";
 import { buildProfileBadges } from "../lib/buildProfileBadges";
+import { APP_LANGUAGES, languageMeta } from "../data/languages";
 import { useChatStore } from "../store/chatStore";
+import { fetchSlangWords } from "../lib/slang";
+import { fetchProgressStats, fetchSeenWordIds } from "../lib/wordProgress";
 
 import { useAuthStore, type UserGender } from "../store/authStore";
 
@@ -22,23 +27,85 @@ const GENDERS: { id: UserGender; label: string }[] = [
   { id: "neutral", label: "they / them" },
 ];
 
+const SWEAR_OPTIONS: { id: boolean; label: string }[] = [
+  { id: false, label: "keep it clean" },
+  { id: true, label: "include swears" },
+];
+
 export function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<MainTabNavigationProp>();
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
   const updateGender = useAuthStore((s) => s.updateGender);
+  const updateIncludeSwearWords = useAuthStore((s) => s.updateIncludeSwearWords);
+  const setActiveLanguage = useAuthStore((s) => s.setActiveLanguage);
+  const addLanguage = useAuthStore((s) => s.addLanguage);
   const threads = useChatStore((s) => s.threads);
   const [genderError, setGenderError] = useState<string | null>(null);
+  const [swearError, setSwearError] = useState<string | null>(null);
+  const [languageError, setLanguageError] = useState<string | null>(null);
+  const [addingLanguage, setAddingLanguage] = useState(false);
+  const [badgeExtras, setBadgeExtras] = useState({
+    bookmarkedCount: 0,
+    weakRecovered: 0,
+    totalCorrect: 0,
+    dialectCount: 0,
+    fillerSeen: 0,
+  });
 
   const name = profile?.display_name?.trim() || "you";
   const language = profile?.language ?? "turkish";
+  const enrolled = profile?.languages?.length
+    ? profile.languages
+    : [language];
+  const addable = APP_LANGUAGES.filter(
+    (l) => l.available && !enrolled.includes(l.id),
+  );
   const paceKey = profile?.pace ?? "steady";
   const paceLabel = PACE_LABELS[paceKey] ?? paceKey;
   const gender = profile?.gender ?? "neutral";
+  const includeSwearWords = profile?.include_swear_words === true;
 
   const streakDays = profile?.streak_days ?? 0;
   const shineScore = profile?.shine_score ?? 0;
   const wordsLearned = profile?.words_learned ?? 0;
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        const [{ data: words }, stats, seen] = await Promise.all([
+          fetchSlangWords(language, { includeSwearWords: true }),
+          fetchProgressStats(),
+          fetchSeenWordIds(),
+        ]);
+        if (!active) return;
+
+        const langIds = new Set(words.map((w) => w.id));
+        const scoped = await fetchProgressStats(langIds);
+        if (!active) return;
+
+        const seenSet = new Set(seen.ids);
+        const seenWords = words.filter((w) => seenSet.has(w.id));
+        const dialects = new Set(
+          seenWords.map((w) => w.dialect).filter((d) => d && d !== "general"),
+        );
+        const fillers = seenWords.filter((w) => w.category === "filler").length;
+
+        setBadgeExtras({
+          bookmarkedCount: scoped.stats.bookmarkedCount,
+          weakRecovered: scoped.stats.recoveredCount,
+          totalCorrect: scoped.stats.totalCorrect || stats.stats.totalCorrect,
+          dialectCount: dialects.size,
+          fillerSeen: fillers,
+        });
+      })();
+      return () => {
+        active = false;
+      };
+    }, [language]),
+  );
 
   const streakGoal = 7;
   const streakTowardWeek = Math.min(streakDays, streakGoal);
@@ -54,7 +121,10 @@ export function ProfileScreen() {
   const hasChatted = Object.values(threads).some((msgs) =>
     msgs.some((m) => m.role === "you"),
   );
-  const badges = buildProfileBadges(profile, hasChatted);
+  const badges = buildProfileBadges(profile, {
+    hasChatted,
+    ...badgeExtras,
+  });
 
   const stats = [
     { num: String(streakDays), label: "day streak" },
@@ -67,6 +137,29 @@ export function ProfileScreen() {
     const err = await updateGender(id);
     if (err) setGenderError(err);
   };
+
+  const onPickSwearWords = async (include: boolean) => {
+    setSwearError(null);
+    const err = await updateIncludeSwearWords(include);
+    if (err) setSwearError(err);
+  };
+
+  const onPickLanguage = async (id: string) => {
+    setLanguageError(null);
+    const err = await setActiveLanguage(id);
+    if (err) setLanguageError(err);
+  };
+
+  const onAddLanguage = async (id: string) => {
+    setLanguageError(null);
+    const err = await addLanguage(id);
+    if (err) {
+      setLanguageError(err);
+      return;
+    }
+    setAddingLanguage(false);
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
       <ScrollView
@@ -95,6 +188,86 @@ export function ProfileScreen() {
           ))}
         </View>
 
+        <View style={styles.quickRow}>
+          <Pressable
+            style={styles.quickChip}
+            onPress={() => navigation.navigate("Review")}
+          >
+            <Text style={styles.quickChipText}>review weak</Text>
+          </Pressable>
+          <Pressable
+            style={styles.quickChip}
+            onPress={() => navigation.navigate("Bookmarks")}
+          >
+            <Text style={styles.quickChipText}>
+              saved · {badgeExtras.bookmarkedCount}
+            </Text>
+          </Pressable>
+        </View>
+
+        <Text style={styles.sectionLabel}>LANGUAGES</Text>
+        <View style={styles.genderRow}>
+          {enrolled.map((id) => {
+            const meta = languageMeta(id);
+            const selected = language === id;
+            return (
+              <Pressable
+                key={id}
+                style={[styles.genderChip, selected && styles.genderChipSelected]}
+                onPress={() => void onPickLanguage(id)}
+              >
+                <Text
+                  style={[
+                    styles.genderChipText,
+                    selected && styles.genderChipTextSelected,
+                  ]}
+                >
+                  {meta ? `${meta.flag} ${meta.name}` : id}
+                </Text>
+              </Pressable>
+            );
+          })}
+          {addable.length > 0 ? (
+            <Pressable
+              style={[
+                styles.genderChip,
+                addingLanguage && styles.genderChipSelected,
+              ]}
+              onPress={() => {
+                setLanguageError(null);
+                setAddingLanguage((open) => !open);
+              }}
+            >
+              <Text
+                style={[
+                  styles.genderChipText,
+                  addingLanguage && styles.genderChipTextSelected,
+                ]}
+              >
+                + add
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+        {addingLanguage && addable.length > 0 ? (
+          <View style={styles.addLanguageRow}>
+            {addable.map((lang) => (
+              <Pressable
+                key={lang.id}
+                style={styles.genderChip}
+                onPress={() => void onAddLanguage(lang.id)}
+              >
+                <Text style={styles.genderChipText}>
+                  {lang.flag} {lang.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        {languageError ? (
+          <Text style={styles.languageError}>{languageError}</Text>
+        ) : null}
+
         <Text style={styles.sectionLabel}>ADDRESS ME AS</Text>
         <View style={styles.genderRow}>
           {GENDERS.map((g) => {
@@ -119,6 +292,32 @@ export function ProfileScreen() {
         </View>
         {genderError ? (
           <Text style={styles.genderError}>{genderError}</Text>
+        ) : null}
+
+        <Text style={styles.sectionLabel}>SWEAR WORDS</Text>
+        <View style={styles.genderRow}>
+          {SWEAR_OPTIONS.map((option) => {
+            const selected = includeSwearWords === option.id;
+            return (
+              <Pressable
+                key={String(option.id)}
+                style={[styles.genderChip, selected && styles.genderChipSelected]}
+                onPress={() => void onPickSwearWords(option.id)}
+              >
+                <Text
+                  style={[
+                    styles.genderChipText,
+                    selected && styles.genderChipTextSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {swearError ? (
+          <Text style={styles.genderError}>{swearError}</Text>
         ) : null}
 
         <Text style={styles.sectionLabel}>STREAK</Text>
@@ -221,7 +420,25 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  quickRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  quickChip: {
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surface,
+  },
+  quickChipText: {
+    fontSize: fontSize.small,
+    color: colors.primaryText,
+    fontWeight: fontWeight.medium,
   },
   genderRow: {
     flexDirection: "row",
@@ -250,9 +467,23 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
   },
   genderError: {
-    marginTop: spacing.sm,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.lg,
     fontSize: fontSize.small,
     color: colors.coralStrong,
+  },
+  languageError: {
+    marginTop: -spacing.sm,
+    marginBottom: spacing.lg,
+    fontSize: fontSize.small,
+    color: colors.coralStrong,
+  },
+  addLanguageRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.lg,
   },
   stat: {
     flex: 1,
@@ -327,7 +558,7 @@ const styles = StyleSheet.create({
   },
   badgeItem: {
     alignItems: "center",
-    width: 56,
+    width: 72,
   },
   badge: {
     width: 44,

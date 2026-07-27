@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { PersonaId } from "../data/personas";
+import type { PersonaRole } from "../data/personas";
 import type { UserGender } from "../store/authStore";
 import {
   matchSlangInMessage,
@@ -105,9 +105,11 @@ export async function chatWithPersona(
   message: string,
   history: ChatTurn[] = [],
   options?: {
-    persona?: PersonaId;
+    language?: string;
+    role?: PersonaRole;
     gender?: UserGender | null;
     displayName?: string | null;
+    includeSwearWords?: boolean;
   },
 ): Promise<{
   reply: string | null;
@@ -119,9 +121,11 @@ export async function chatWithPersona(
     body: {
       message,
       history,
-      persona: options?.persona ?? "zeynep",
+      language: options?.language ?? "turkish",
+      role: options?.role ?? "casual",
       gender: options?.gender ?? "neutral",
       displayName: options?.displayName ?? null,
+      includeSwearWords: options?.includeSwearWords === true,
     },
   });
 
@@ -188,13 +192,19 @@ function mergeExplainItems(
 export async function explainSlangInMessage(
   message: string,
   options?: {
+    language?: string;
     /** Called as soon as DB matches are ready (before any AI call). */
     onLocalMatches?: (items: SlangExplainItem[]) => void;
     /** Called only when an AI pass will run for unknown leftovers. */
     onEnriching?: () => void;
   },
 ): Promise<{ items: SlangExplainItem[]; error: string | null }> {
-  const { data: words, error: wordsError } = await fetchSlangWords();
+  const { data: words, error: wordsError } = await fetchSlangWords(
+    options?.language ?? "turkish",
+    // Always include swears for tap-to-explain so learners can decode
+    // what showed up in a message even if practice swears are off.
+    { includeSwearWords: true },
+  );
   if (wordsError) {
     return { items: [], error: wordsError };
   }
@@ -210,7 +220,12 @@ export async function explainSlangInMessage(
 
   const knownTerms = localItems.map((item) => item.term);
   const { data, error } = await supabase.functions.invoke("chat", {
-    body: { action: "explain", message, knownTerms },
+    body: {
+      action: "explain",
+      message,
+      knownTerms,
+      language: options?.language ?? "turkish",
+    },
   });
 
   if (error) {

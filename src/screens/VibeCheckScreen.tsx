@@ -12,7 +12,8 @@ import { Button } from "../components/Button";
 import { fetchSlangWords } from "../lib/slang";
 import { sessionSizeFromPace } from "../lib/sessionSize";
 import { pickSessionWords } from "../lib/pickSessionWords";
-import { fetchSeenWordIds } from "../lib/wordProgress";
+import { fetchSeenWordIds, recordWordReview } from "../lib/wordProgress";
+import { bumpDailyActivity } from "../lib/dailyActivity";
 import { buildVibeQuiz, type VibeQuiz } from "../lib/buildVibeQuiz";
 import type { SlangWord } from "../data/types";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
@@ -22,6 +23,10 @@ export function VibeCheckScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const insets = useSafeAreaInsets();
   const pace = useAuthStore((s) => s.profile?.pace);
+  const language = useAuthStore((s) => s.profile?.language ?? "turkish");
+  const includeSwearWords = useAuthStore(
+    (s) => s.profile?.include_swear_words === true,
+  );
   const awardQuizSuccess = useAuthStore((s) => s.awardQuizSuccess);
   const shineScore = useAuthStore((s) => s.profile?.shine_score ?? 0);
 
@@ -38,7 +43,7 @@ export function VibeCheckScreen() {
 
     (async () => {
       const [{ data, error: fetchError }, seen] = await Promise.all([
-        fetchSlangWords(),
+        fetchSlangWords(language, { includeSwearWords }),
         fetchSeenWordIds(),
       ]);
       if (cancelled) return;
@@ -75,7 +80,7 @@ export function VibeCheckScreen() {
     return () => {
       cancelled = true;
     };
-  }, [pace]);
+  }, [language, pace, includeSwearWords]);
 
   const total = sessionWords.length;
   const answered = selectedId !== null;
@@ -92,6 +97,11 @@ export function VibeCheckScreen() {
   const onSelect = (id: string, correct: boolean) => {
     if (answered) return;
     setSelectedId(id);
+    const wordId = quiz?.word.id;
+    if (wordId) {
+      void recordWordReview(wordId, correct ? "good" : "again");
+    }
+    void bumpDailyActivity("vibe");
     if (correct) {
       void awardQuizSuccess();
     }
