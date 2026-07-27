@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 import { Button } from "../components/Button";
+import { avatarInitialFromName } from "../lib/avatar";
 import { buildProfileBadges } from "../lib/buildProfileBadges";
 import { useChatStore } from "../store/chatStore";
 
@@ -41,7 +42,8 @@ export function ProfileScreen() {
 
   const streakGoal = 7;
   const streakTowardWeek = Math.min(streakDays, streakGoal);
-  const streakFill = `${(streakTowardWeek / streakGoal) * 100}%`;
+  const streakFill =
+    `${(streakTowardWeek / streakGoal) * 100}%` as `${number}%`;
   const streakHint =
     streakTowardWeek >= streakGoal
       ? "7-day streak unlocked ✦"
@@ -73,7 +75,9 @@ export function ProfileScreen() {
       >
         <View style={styles.hero}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarEmoji}>👩</Text>
+            <Text style={styles.avatarInitial}>
+              {avatarInitialFromName(name)}
+            </Text>
           </View>
           <Text style={styles.name}>{name}</Text>
           <Text style={styles.meta}>learning {language}</Text>
@@ -187,8 +191,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: spacing.sm,
   },
-  avatarEmoji: {
-    fontSize: 28,
+  avatarInitial: {
+    fontSize: fontSize.title,
+    fontWeight: fontWeight.medium,
+    color: colors.primaryText,
   },
   name: {
     fontSize: fontSize.headingLg,

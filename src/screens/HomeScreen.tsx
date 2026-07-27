@@ -6,6 +6,7 @@ import { Feather } from "@expo/vector-icons";
 
 import type { MainTabNavigationProp } from "../navigation/types";
 import { LessonCard } from "../components/LessonCard";
+import { avatarInitialFromName } from "../lib/avatar";
 import { fetchSlangWords } from "../lib/slang";
 import { fetchSeenWordIds } from "../lib/wordProgress";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
@@ -84,7 +85,9 @@ export function HomeScreen() {
           </Text>
           </View>
           <View style={styles.avatar}>
-            <Text style={styles.avatarEmoji}>👩</Text>
+            <Text style={styles.avatarInitial}>
+              {avatarInitialFromName(name)}
+            </Text>
           </View>
         </View>
 
@@ -184,8 +187,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarEmoji: {
-    fontSize: 18,
+  avatarInitial: {
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.medium,
+    color: colors.primaryText,
   },
   streakBanner: {
     backgroundColor: colors.amberBg,
