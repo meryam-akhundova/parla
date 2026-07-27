@@ -11,12 +11,13 @@ const corsHeaders = {
 const OUTPUT_FORMAT = `
 Always respond with ONLY a raw JSON object. Do NOT wrap it in markdown or code fences. No \`\`\`json. No other text.
 Exact shape:
-{"reply":"<turkish text message only>","feedback":"<optional short english coaching, or null>"}
+{"reply":"<turkish text message only>","feedback":"<optional short english coaching, or null>","suggestions":["<short turkish reply option>", "<...>", "<...>"]}
 
 Rules:
 - "reply" is what appears in the chat bubble: Turkish only, like a real text. Never put English coaching inside reply. Never put JSON syntax in reply.
 - "feedback" is a separate tip for the learner (naturalness, better wording, register). Use null if their message was already fine.
 - Keep feedback to one short sentence when present.
+- "suggestions" is 2–3 short Turkish replies the learner could send next (same register as this persona). No English. Keep each under ~40 characters.
 - If the persona is Mehmet and the learner used Istanbul Gen-Z slang (kanka/aynen/jefa style), feedback may briefly note a more Anatolian/natural alternative.`;
 
 const EXPLAIN_SYSTEM = `You help language learners understand Turkish chat slang and abbreviations.
@@ -102,20 +103,34 @@ function stripFences(raw: string): string {
     .trim();
 }
 
-function parseModelOutput(raw: string): { reply: string; feedback: string | null } {
+function parseSuggestions(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+    .map((s) => s.trim())
+    .slice(0, 3);
+}
+
+function parseModelOutput(raw: string): {
+  reply: string;
+  feedback: string | null;
+  suggestions: string[];
+} {
   let text = stripFences(raw);
 
   const tryParse = (slice: string) => {
     const parsed = JSON.parse(slice) as {
       reply?: unknown;
       feedback?: unknown;
+      suggestions?: unknown;
     };
     const reply = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
     const feedback =
       typeof parsed.feedback === "string" && parsed.feedback.trim()
         ? parsed.feedback.trim()
         : null;
-    return reply ? { reply, feedback } : null;
+    const suggestions = parseSuggestions(parsed.suggestions);
+    return reply ? { reply, feedback, suggestions } : null;
   };
 
   try {
@@ -137,7 +152,7 @@ function parseModelOutput(raw: string): { reply: string; feedback: string | null
     // fall through
   }
 
-  return { reply: text, feedback: null };
+  return { reply: text, feedback: null, suggestions: [] };
 }
 
 function parseExplainOutput(
@@ -287,10 +302,10 @@ Deno.serve(async (req) => {
       data.content?.find((b: { type: string }) => b.type === "text")?.text ??
       "";
 
-    const { reply, feedback } = parseModelOutput(rawText);
+    const { reply, feedback, suggestions } = parseModelOutput(rawText);
 
     return Response.json(
-      { reply, feedback },
+      { reply, feedback, suggestions },
       { headers: corsHeaders },
     );
   } catch (e) {

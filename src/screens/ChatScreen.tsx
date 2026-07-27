@@ -49,6 +49,9 @@ export function ChatScreen() {
   const persona = getPersona(selectedPersona);
 
   const [draft, setDraft] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>(
+    persona.suggestedReplies,
+  );
   const [sendingFor, setSendingFor] = useState<PersonaId | null>(null);
   const [introTypingFor, setIntroTypingFor] = useState<PersonaId | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +88,11 @@ export function ChatScreen() {
     };
   }, [selectedPersona, messages.length, setMessages]);
 
+  // Reset starter chips when switching personas
+  useEffect(() => {
+    setSuggestions(getPersona(selectedPersona).suggestedReplies);
+  }, [selectedPersona]);
+
   const selectPersona = (id: PersonaId) => {
     if (id === selectedPersona) return;
     setPersona(id);
@@ -96,6 +104,7 @@ export function ChatScreen() {
     setDraft("");
     setError(null);
     setIntroTypingFor(null);
+    setSuggestions(persona.suggestedReplies);
     resetThread(selectedPersona);
   };
 
@@ -148,20 +157,22 @@ export function ChatScreen() {
 
     setMessages((prev) => [...prev, youMsg], personaId);
     setDraft("");
+    setSuggestions([]);
     setError(null);
     setSendingFor(personaId);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
 
     const startedAt = Date.now();
-    const { reply, feedback, error: chatError } = await chatWithPersona(
-      trimmed,
-      historySnapshot,
-      {
-        persona: personaId,
-        gender: profile?.gender ?? "neutral",
-        displayName: profile?.display_name,
-      },
-    );
+    const {
+      reply,
+      feedback,
+      suggestions: nextSuggestions,
+      error: chatError,
+    } = await chatWithPersona(trimmed, historySnapshot, {
+      persona: personaId,
+      gender: profile?.gender ?? "neutral",
+      displayName: profile?.display_name,
+    });
 
     // Typing duration scales with reply length (API wait counts toward it)
     const elapsed = Date.now() - startedAt;
@@ -191,6 +202,12 @@ export function ChatScreen() {
       }
       return next;
     }, personaId);
+
+    if (nextSuggestions.length > 0) {
+      setSuggestions(nextSuggestions);
+    } else {
+      setSuggestions(getPersona(personaId).suggestedReplies);
+    }
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
   };
 
@@ -275,6 +292,25 @@ export function ChatScreen() {
       </ScrollView>
 
       <View style={styles.composer}>
+        {suggestions.length > 0 && !showTyping ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.suggestRow}
+            keyboardShouldPersistTaps="handled"
+          >
+            {suggestions.map((chip) => (
+              <Pressable
+                key={chip}
+                style={styles.suggestChip}
+                onPress={() => void send(chip)}
+                disabled={sending}
+              >
+                <Text style={styles.suggestChipText}>{chip}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null}
         <View style={styles.inputRow}>
           <TextInput
             value={draft}
@@ -443,6 +479,22 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: colors.borderLight,
     paddingTop: 10,
+  },
+  suggestRow: {
+    gap: 6,
+    paddingBottom: spacing.sm,
+  },
+  suggestChip: {
+    borderWidth: 0.5,
+    borderColor: colors.primaryMid,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.full,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  suggestChipText: {
+    fontSize: fontSize.label,
+    color: colors.primaryText,
   },
   inputRow: {
     flexDirection: "row",

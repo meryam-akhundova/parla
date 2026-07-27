@@ -6,6 +6,8 @@ export type Persona = {
   status: string;
   scenario: string;
   openers: string[];
+  /** Starter reply chips shown before the model returns suggestions. */
+  suggestedReplies: string[];
 };
 
 export const PERSONAS: Persona[] = [
@@ -22,6 +24,11 @@ export const PERSONAS: Persona[] = [
       "ya bu trafikte eridim neredesin",
       "bişey sorcam: 'yok artık' ne zaman fazla kaçar?",
     ],
+    suggestedReplies: [
+      "ya anladım knk",
+      "valla mı?",
+      "gel bi kahve içelim",
+    ],
   },
   {
     id: "mehmet",
@@ -36,6 +43,11 @@ export const PERSONAS: Persona[] = [
       "memlekette hava güzel vallahi, senin orası nasıl?",
       "hayırdır, uzun zamandır yazmamıştın — iyisin inşallah?",
     ],
+    suggestedReplies: [
+      "iyiyiz vallahi, sen nasılsın?",
+      "kolay gelsin",
+      "eyvallah kardeş",
+    ],
   },
   {
     id: "ayse",
@@ -48,6 +60,11 @@ export const PERSONAS: Persona[] = [
       "Merhaba — müsait misiniz, bir şey sormak istiyorum.",
       "İyi akşamlar. Nasılsınız bugün?",
       "Merhaba, umarım rahatsız etmiyorum. Nasılsınız?",
+    ],
+    suggestedReplies: [
+      "Merhaba, iyiyim teşekkür ederim.",
+      "Tabii, buyurun.",
+      "Ben de iyiyim, siz nasılsınız?",
     ],
   },
 ];

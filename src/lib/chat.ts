@@ -12,16 +12,30 @@ export type ChatTurn = {
   content: string;
 };
 
+function parseSuggestions(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+    .map((s) => s.trim())
+    .slice(0, 3);
+}
+
 /** Unwrap model JSON if the bubble text is still raw {"reply":...} */
 function unwrapPayload(
   reply: unknown,
   feedback: unknown,
-): { reply: string | null; feedback: string | null } {
+  suggestions?: unknown,
+): {
+  reply: string | null;
+  feedback: string | null;
+  suggestions: string[];
+} {
   let text = typeof reply === "string" ? reply.trim() : "";
   let tip =
     typeof feedback === "string" && feedback.trim() ? feedback.trim() : null;
+  let tips = parseSuggestions(suggestions);
 
-  if (!text) return { reply: null, feedback: tip };
+  if (!text) return { reply: null, feedback: tip, suggestions: tips };
 
   const looksLikeJson =
     text.includes('"reply"') ||
@@ -42,6 +56,7 @@ function unwrapPayload(
       const parsed = JSON.parse(cleaned) as {
         reply?: unknown;
         feedback?: unknown;
+        suggestions?: unknown;
       };
       if (typeof parsed.reply === "string" && parsed.reply.trim()) {
         text = parsed.reply.trim();
@@ -50,13 +65,15 @@ function unwrapPayload(
         } else if (parsed.feedback === null) {
           tip = tip ?? null;
         }
+        const nested = parseSuggestions(parsed.suggestions);
+        if (nested.length > 0) tips = nested;
       }
     } catch {
       // keep original text
     }
   }
 
-  return { reply: text, feedback: tip };
+  return { reply: text, feedback: tip, suggestions: tips };
 }
 
 export async function chatWithPersona(
@@ -70,6 +87,7 @@ export async function chatWithPersona(
 ): Promise<{
   reply: string | null;
   feedback: string | null;
+  suggestions: string[];
   error: string | null;
 }> {
   const { data, error } = await supabase.functions.invoke("chat-with-zeynep", {
@@ -83,11 +101,21 @@ export async function chatWithPersona(
   });
 
   if (error) {
-    return { reply: null, feedback: null, error: error.message };
+    return {
+      reply: null,
+      feedback: null,
+      suggestions: [],
+      error: error.message,
+    };
   }
 
   if (data?.error) {
-    return { reply: null, feedback: null, error: String(data.error) };
+    return {
+      reply: null,
+      feedback: null,
+      suggestions: [],
+      error: String(data.error),
+    };
   }
 
   // Sometimes the whole body is a string of JSON
@@ -96,7 +124,7 @@ export async function chatWithPersona(
   }
 
   return {
-    ...unwrapPayload(data?.reply, data?.feedback),
+    ...unwrapPayload(data?.reply, data?.feedback, data?.suggestions),
     error: null,
   };
 }
