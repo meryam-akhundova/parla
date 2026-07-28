@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCallback, useState } from "react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -46,7 +46,9 @@ export function ProfileScreen() {
   const [genderError, setGenderError] = useState<string | null>(null);
   const [swearError, setSwearError] = useState<string | null>(null);
   const [languageError, setLanguageError] = useState<string | null>(null);
-  const [addingLanguage, setAddingLanguage] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [pendingLanguage, setPendingLanguage] = useState("");
+  const [addingBusy, setAddingBusy] = useState(false);
   const [badgeExtras, setBadgeExtras] = useState({
     bookmarkedCount: 0,
     weakRecovered: 0,
@@ -150,14 +152,28 @@ export function ProfileScreen() {
     if (err) setLanguageError(err);
   };
 
-  const onAddLanguage = async (id: string) => {
+  const openAddLanguage = () => {
     setLanguageError(null);
-    const err = await addLanguage(id);
+    setPendingLanguage(addable[0]?.id ?? "");
+    setAddOpen(true);
+  };
+
+  const closeAddLanguage = () => {
+    if (addingBusy) return;
+    setAddOpen(false);
+  };
+
+  const onAddLanguage = async () => {
+    if (!pendingLanguage || addingBusy) return;
+    setAddingBusy(true);
+    setLanguageError(null);
+    const err = await addLanguage(pendingLanguage);
+    setAddingBusy(false);
     if (err) {
       setLanguageError(err);
       return;
     }
-    setAddingLanguage(false);
+    setAddOpen(false);
   };
 
   return (
@@ -228,43 +244,12 @@ export function ProfileScreen() {
             );
           })}
           {addable.length > 0 ? (
-            <Pressable
-              style={[
-                styles.genderChip,
-                addingLanguage && styles.genderChipSelected,
-              ]}
-              onPress={() => {
-                setLanguageError(null);
-                setAddingLanguage((open) => !open);
-              }}
-            >
-              <Text
-                style={[
-                  styles.genderChipText,
-                  addingLanguage && styles.genderChipTextSelected,
-                ]}
-              >
-                + add
-              </Text>
+            <Pressable style={styles.genderChip} onPress={openAddLanguage}>
+              <Text style={styles.genderChipText}>+ add</Text>
             </Pressable>
           ) : null}
         </View>
-        {addingLanguage && addable.length > 0 ? (
-          <View style={styles.addLanguageRow}>
-            {addable.map((lang) => (
-              <Pressable
-                key={lang.id}
-                style={styles.genderChip}
-                onPress={() => void onAddLanguage(lang.id)}
-              >
-                <Text style={styles.genderChipText}>
-                  {lang.flag} {lang.name}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-        {languageError ? (
+        {languageError && !addOpen ? (
           <Text style={styles.languageError}>{languageError}</Text>
         ) : null}
 
@@ -365,6 +350,58 @@ export function ProfileScreen() {
           <Button label="sign out" variant="ghost" onPress={() => signOut()} />
         </View>
       </ScrollView>
+
+      <Modal
+        visible={addOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={closeAddLanguage}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={closeAddLanguage}>
+          <Pressable
+            style={styles.modalCard}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.modalTitle}>add language</Text>
+            <Text style={styles.modalSubtitle}>
+              pick another language to learn
+            </Text>
+
+            <View style={styles.modalGrid}>
+              {addable.map((lang) => {
+                const selected = pendingLanguage === lang.id;
+                return (
+                  <Pressable
+                    key={lang.id}
+                    onPress={() => setPendingLanguage(lang.id)}
+                    style={[
+                      styles.langCard,
+                      selected && styles.langCardSelected,
+                    ]}
+                  >
+                    <Text style={styles.langFlag}>{lang.flag}</Text>
+                    <Text style={styles.langName}>{lang.name}</Text>
+                    <Text style={styles.langSub}>{lang.sub}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {languageError && addOpen ? (
+              <Text style={styles.modalError}>{languageError}</Text>
+            ) : null}
+
+            <Button
+              label={addingBusy ? "adding…" : "add language"}
+              onPress={() => void onAddLanguage()}
+              disabled={!pendingLanguage || addingBusy}
+            />
+            <Pressable style={styles.modalClose} onPress={closeAddLanguage}>
+              <Text style={styles.modalCloseText}>cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -482,13 +519,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.small,
     color: colors.coralStrong,
   },
-  addLanguageRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    marginTop: -spacing.sm,
-    marginBottom: spacing.lg,
-  },
   stat: {
     flex: 1,
     backgroundColor: colors.surface,
@@ -589,5 +619,85 @@ const styles = StyleSheet.create({
   signOut: {
     marginTop: spacing.lg,
     marginBottom: spacing.xl,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(44, 44, 42, 0.4)",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    fontSize: fontSize.headingLg,
+    fontWeight: fontWeight.medium,
+    color: colors.primaryDark,
+    marginBottom: spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: fontSize.small,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  modalGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  langCard: {
+    width: "48.5%",
+    minHeight: 88,
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: 10,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  langCardSelected: {
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  langFlag: {
+    fontSize: 22,
+    marginBottom: spacing.xs,
+  },
+  langName: {
+    fontSize: fontSize.small,
+    fontWeight: fontWeight.medium,
+    color: colors.textPrimary,
+    textAlign: "center",
+  },
+  langSub: {
+    fontSize: fontSize.micro,
+    color: colors.textSecondary,
+    marginTop: 2,
+    textAlign: "center",
+  },
+  modalError: {
+    fontSize: fontSize.small,
+    color: colors.coralStrong,
+    marginBottom: spacing.sm,
+  },
+  modalClose: {
+    alignSelf: "center",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xl,
+  },
+  modalCloseText: {
+    fontSize: fontSize.bodyLg,
+    fontWeight: fontWeight.medium,
+    color: colors.primary,
   },
 });
