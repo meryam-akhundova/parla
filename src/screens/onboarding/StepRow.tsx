@@ -36,6 +36,7 @@ const styles = StyleSheet.create({
   },
   off: {
     width: 6,
-    backgroundColor: colors.border,
+    backgroundColor: colors.primaryMid,
+    opacity: 0.45,
   },
 });

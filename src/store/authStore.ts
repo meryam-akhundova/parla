@@ -100,17 +100,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signUp: async (email, password, displayName) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { display_name: displayName } },
-    });
-    return error?.message ?? null; // null = success
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { display_name: displayName } },
+      });
+      return error?.message ?? null; // null = success
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "sign up failed";
+      return message === "Network request failed"
+        ? "can't reach the server — check your connection and restart expo"
+        : message;
+    }
   },
 
   signIn: async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return error?.message ?? null;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return error?.message ?? null;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "sign in failed";
+      return message === "Network request failed"
+        ? "can't reach the server — check your connection and restart expo"
+        : message;
+    }
   },
 
   signOut: async () => {

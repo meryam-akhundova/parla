@@ -1,39 +1,31 @@
 import { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { RootNavigationProp } from "../../navigation/types";
 import { Button } from "../../components/Button";
 import { HintBox } from "../../components/HintBox";
 import { StepRow } from "./StepRow";
+import { OnboardingShell } from "./OnboardingShell";
+import { onboardingChrome } from "./onboardingChrome";
 import { APP_LANGUAGES } from "../../data/languages";
 import { colors, spacing, radius, fontSize, fontWeight } from "../../theme/theme";
-
 import { useAuthStore } from "../../store/authStore";
 
 export function OnboardingLanguageScreen() {
   const navigation = useNavigation<RootNavigationProp>();
-  const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState("turkish");
-
   const setDraft = useAuthStore((s) => s.setDraft);
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingTop: insets.top + spacing.lg,
-          paddingBottom: insets.bottom + spacing.lg,
-        },
-      ]}
-    >
+    <OnboardingShell>
       <StepRow currentStep={0} totalSteps={6} />
 
-      <Text style={styles.sparkle}>✦</Text>
-      <Text style={styles.title}>which language?</Text>
-      <Text style={styles.subtitle}>pick one to start — add more later</Text>
+      <Text style={onboardingChrome.sparkle}>✦</Text>
+      <Text style={onboardingChrome.title}>which language?</Text>
+      <Text style={onboardingChrome.subtitle}>
+        pick one to start — add more later
+      </Text>
 
       <View style={styles.grid}>
         {APP_LANGUAGES.map((lang) => {
@@ -59,53 +51,32 @@ export function OnboardingLanguageScreen() {
 
       <HintBox message="already speak it formally? parla works for fluent speakers too — we'll tune to your level." />
 
-      <View style={styles.footer}>
-        <Button
-          label="continue"
-          onPress={() => {
-            setDraft({ language: selected });
-            navigation.navigate("OnboardingGender");
-          }}
-        />
+      <View style={onboardingChrome.footer}>
+        <View style={onboardingChrome.primaryWrap}>
+          <Button
+            label="continue"
+            onPress={() => {
+              setDraft({ language: selected });
+              navigation.navigate("OnboardingGender");
+            }}
+          />
+        </View>
       </View>
-    </View>
+    </OnboardingShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.lg,
-  },
-  sparkle: {
-    fontSize: 22,
-    color: colors.primary,
-    textAlign: "center",
-    marginBottom: spacing.sm,
-  },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: fontWeight.medium,
-    color: colors.primaryDark,
-    textAlign: "center",
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: fontSize.small,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginBottom: 18,
-  },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    justifyContent: "space-between",
+    rowGap: spacing.sm,
     marginBottom: spacing.md,
   },
   card: {
-    width: "48%",
-    flexGrow: 1,
+    width: "48.5%",
+    minHeight: 98,
     borderWidth: 0.5,
     borderColor: colors.border,
     borderRadius: radius.md,
@@ -113,6 +84,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: colors.white,
     alignItems: "center",
+    justifyContent: "center",
   },
   cardSelected: {
     borderWidth: 1.5,
@@ -121,6 +93,7 @@ const styles = StyleSheet.create({
   },
   cardDisabled: {
     opacity: 0.45,
+    backgroundColor: colors.surface,
   },
   flag: {
     fontSize: 22,
@@ -130,13 +103,12 @@ const styles = StyleSheet.create({
     fontSize: fontSize.small,
     fontWeight: fontWeight.medium,
     color: colors.textPrimary,
+    textAlign: "center",
   },
   langSub: {
     fontSize: fontSize.micro,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  footer: {
-    marginTop: "auto",
+    textAlign: "center",
   },
 });

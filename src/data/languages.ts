@@ -3,7 +3,10 @@ export type AppLanguageId =
   | "spanish"
   | "french"
   | "azerbaijani"
-  | "italian";
+  | "italian"
+  | "portuguese"
+  | "german"
+  | "russian";
 
 export type AppLanguage = {
   id: AppLanguageId;
@@ -16,24 +19,31 @@ export type AppLanguage = {
 
 export const APP_LANGUAGES: AppLanguage[] = [
   {
-    id: "turkish",
-    flag: "🇹🇷",
-    name: "turkish",
-    sub: "istanbul + anatolian",
+    id: "french",
+    flag: "🇫🇷",
+    name: "french",
+    sub: "paris + québec",
     available: true,
   },
   {
     id: "spanish",
     flag: "🇪🇸",
     name: "spanish",
-    sub: "mx, arg, spain",
+    sub: "mexico + spain",
     available: true,
   },
   {
-    id: "french",
-    flag: "🇫🇷",
-    name: "french",
-    sub: "paris + québec",
+    id: "italian",
+    flag: "🇮🇹",
+    name: "italian",
+    sub: "northern + southern",
+    available: true,
+  },
+  {
+    id: "turkish",
+    flag: "🇹🇷",
+    name: "turkish",
+    sub: "istanbul + anatolian",
     available: true,
   },
   {
@@ -44,11 +54,25 @@ export const APP_LANGUAGES: AppLanguage[] = [
     available: true,
   },
   {
-    id: "italian",
-    flag: "🇮🇹",
-    name: "italian",
-    sub: "milan + southern",
-    available: true,
+    id: "portuguese",
+    flag: "🇧🇷",
+    name: "portuguese",
+    sub: "coming soon",
+    available: false,
+  },
+  {
+    id: "german",
+    flag: "🇩🇪",
+    name: "german",
+    sub: "coming soon",
+    available: false,
+  },
+  {
+    id: "russian",
+    flag: "🇷🇺",
+    name: "russian",
+    sub: "coming soon",
+    available: false,
   },
 ];
 

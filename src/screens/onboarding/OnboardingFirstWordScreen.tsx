@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "../../components/Button";
 import { FlipWordCard } from "../../components/FlipWordCard";
 import { StepRow } from "./StepRow";
+import { OnboardingShell } from "./OnboardingShell";
+import { onboardingChrome } from "./onboardingChrome";
 import { fetchSlangWords } from "../../lib/slang";
 import { pickSessionWords } from "../../lib/pickSessionWords";
 import { markWordsSeen } from "../../lib/wordProgress";
@@ -23,8 +24,6 @@ export function OnboardingFirstWordScreen() {
   const [word, setWord] = useState<SlangWord | null>(null);
   const [wordLoading, setWordLoading] = useState(true);
   const [wordError, setWordError] = useState<string | null>(null);
-
-  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     let cancelled = false;
@@ -57,7 +56,6 @@ export function OnboardingFirstWordScreen() {
     setError(null);
     setLoading(true);
 
-    // Save prefs first, then credit the reveal as their first seen word
     const err = await saveOnboarding();
     if (err) {
       setLoading(false);
@@ -71,51 +69,31 @@ export function OnboardingFirstWordScreen() {
 
   if (wordLoading) {
     return (
-      <View
-        style={[
-          styles.container,
-          styles.centered,
-          { paddingTop: insets.top + spacing.lg },
-        ]}
-      >
+      <OnboardingShell style={styles.centered}>
         <Text style={styles.statusText}>loading…</Text>
-      </View>
+      </OnboardingShell>
     );
   }
 
   if (wordError || !word) {
     return (
-      <View
-        style={[
-          styles.container,
-          styles.centered,
-          { paddingTop: insets.top + spacing.lg },
-        ]}
-      >
+      <OnboardingShell style={styles.centered}>
         <Text style={styles.statusText}>{wordError ?? "No word found"}</Text>
-      </View>
+      </OnboardingShell>
     );
   }
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingTop: insets.top + spacing.lg,
-          paddingBottom: insets.bottom + spacing.lg,
-        },
-      ]}
-    >
+    <OnboardingShell>
       <StepRow currentStep={5} totalSteps={6} />
 
       <View style={styles.header}>
-        <Text style={styles.sparkle}>✦  ✦  ✦</Text>
-        <Text style={styles.title}>you're ready to shine</Text>
-        <Text style={styles.subtitle}>
+        <Text style={onboardingChrome.sparkle}>✦</Text>
+        <Text style={onboardingChrome.title}>you're ready to shine</Text>
+        <Text style={onboardingChrome.subtitle}>
           {flipped
             ? "nice — you've got your first word ✦"
-            : "tap the card to reveal your first turkish word"}
+            : "tap the card to reveal your first word"}
         </Text>
       </View>
 
@@ -131,45 +109,23 @@ export function OnboardingFirstWordScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button
-          label={loading ? "saving…" : "start learning ✦"}
-          onPress={() => void finishOnboarding()}
-          disabled={!flipped || loading}
-        />
+        <View style={onboardingChrome.primaryWrap}>
+          <Button
+            label={loading ? "saving…" : "start learning ✦"}
+            onPress={() => void finishOnboarding()}
+            disabled={!flipped || loading}
+          />
+        </View>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>
-    </View>
+    </OnboardingShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-  },
   header: {
     alignItems: "center",
     marginBottom: spacing.sm,
-  },
-  sparkle: {
-    fontSize: 28,
-    color: colors.primary,
-    letterSpacing: 6,
-    marginBottom: spacing.sm,
-  },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: fontWeight.medium,
-    color: colors.primaryDark,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: fontSize.small,
-    color: colors.textSecondary,
-    textAlign: "center",
-    paddingHorizontal: spacing.md,
   },
   scroll: {
     paddingBottom: spacing.md,
@@ -184,12 +140,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   centered: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   statusText: {
     fontSize: fontSize.bodyLg,
+    fontWeight: fontWeight.regular,
     color: colors.textSecondary,
   },
 });

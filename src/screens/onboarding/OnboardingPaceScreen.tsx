@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
 import type { RootNavigationProp } from "../../navigation/types";
@@ -9,8 +8,9 @@ import { Button } from "../../components/Button";
 import { HintBox } from "../../components/HintBox";
 import { OnboardingOption } from "./OnboardingOption";
 import { StepRow } from "./StepRow";
-import { colors, spacing, fontSize, fontWeight } from "../../theme/theme";
-
+import { OnboardingShell } from "./OnboardingShell";
+import { onboardingChrome } from "./onboardingChrome";
+import { colors, spacing } from "../../theme/theme";
 import { useAuthStore } from "../../store/authStore";
 
 const PACE_OPTIONS = [
@@ -37,26 +37,18 @@ const PACE_OPTIONS = [
 
 export function OnboardingPaceScreen() {
   const navigation = useNavigation<RootNavigationProp>();
-  const insets = useSafeAreaInsets();
   const [selectedPace, setSelectedPace] = useState<string>("steady");
-
   const setDraft = useAuthStore((s) => s.setDraft);
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingTop: insets.top + spacing.lg,
-          paddingBottom: insets.bottom + spacing.lg,
-        },
-      ]}
-    >
+    <OnboardingShell>
       <StepRow currentStep={3} totalSteps={6} />
 
-      <Text style={styles.sparkle}>✦  ✦  ✦</Text>
-      <Text style={styles.title}>how much time?</Text>
-      <Text style={styles.subtitle}>a little every day goes a long way</Text>
+      <Text style={onboardingChrome.sparkle}>✦</Text>
+      <Text style={onboardingChrome.title}>how much time?</Text>
+      <Text style={onboardingChrome.subtitle}>
+        a little every day goes a long way
+      </Text>
 
       <View style={styles.options}>
         {PACE_OPTIONS.map((pace) => (
@@ -74,49 +66,23 @@ export function OnboardingPaceScreen() {
 
       <HintBox message="consistency beats intensity — even 5 minutes a day builds a real glow over time" />
 
-      <View style={styles.footer}>
-        <Button
-          label="continue"
-          onPress={() => {
-            setDraft({ pace: selectedPace });
-            navigation.navigate("OnboardingSwearWords");
-          }}
-        />
+      <View style={onboardingChrome.footer}>
+        <View style={onboardingChrome.primaryWrap}>
+          <Button
+            label="continue"
+            onPress={() => {
+              setDraft({ pace: selectedPace });
+              navigation.navigate("OnboardingSwearWords");
+            }}
+          />
+        </View>
       </View>
-    </View>
+    </OnboardingShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.lg,
-  },
-  sparkle: {
-    fontSize: 22,
-    color: colors.primary,
-    textAlign: "center",
-    letterSpacing: 6,
-    marginBottom: spacing.sm,
-  },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: fontWeight.medium,
-    color: colors.primaryDark,
-    textAlign: "center",
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: fontSize.small,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginBottom: 18,
-  },
   options: {
     marginBottom: spacing.md,
-  },
-  footer: {
-    marginTop: "auto",
   },
 });

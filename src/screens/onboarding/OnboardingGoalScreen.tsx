@@ -1,22 +1,22 @@
 import { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
 import type { RootNavigationProp } from "../../navigation/types";
 import { Button } from "../../components/Button";
 import { OnboardingOption } from "./OnboardingOption";
 import { StepRow } from "./StepRow";
-import { colors, spacing, fontSize, fontWeight } from "../../theme/theme";
-
+import { OnboardingShell } from "./OnboardingShell";
+import { onboardingChrome } from "./onboardingChrome";
+import { colors } from "../../theme/theme";
 import { useAuthStore } from "../../store/authStore";
 
 const GOALS = [
   {
     id: "connect",
     label: "connect with people",
-    subtitle: "partner, family, friends — sound natural",
+    subtitle: "family, friends — sound natural",
     icon: "heart" as const,
   },
   {
@@ -39,28 +39,32 @@ const GOALS = [
   },
 ] as const;
 
+type GoalId = (typeof GOALS)[number]["id"];
+
 export function OnboardingGoalScreen() {
   const navigation = useNavigation<RootNavigationProp>();
-  const insets = useSafeAreaInsets();
-  const [selectedGoal, setSelectedGoal] = useState<string>(GOALS[0].id);
-
+  const [selected, setSelected] = useState<GoalId[]>([GOALS[0].id]);
   const setDraft = useAuthStore((s) => s.setDraft);
 
+  function toggleGoal(id: GoalId) {
+    setSelected((prev) => {
+      if (prev.includes(id)) {
+        if (prev.length === 1) return prev; // keep at least one
+        return prev.filter((g) => g !== id);
+      }
+      return [...prev, id];
+    });
+  }
+
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingTop: insets.top + spacing.lg,
-          paddingBottom: insets.bottom + spacing.lg,
-        },
-      ]}
-    >
+    <OnboardingShell>
       <StepRow currentStep={2} totalSteps={6} />
 
-      <Text style={styles.sparkle}>✦  ✦</Text>
-      <Text style={styles.title}>what's your vibe?</Text>
-      <Text style={styles.subtitle}>we'll shape your lessons around this</Text>
+      <Text style={onboardingChrome.sparkle}>✦</Text>
+      <Text style={onboardingChrome.title}>what's your vibe?</Text>
+      <Text style={onboardingChrome.subtitle}>
+        pick as many as you like — we'll shape lessons around them
+      </Text>
 
       <View style={styles.options}>
         {GOALS.map((goal) => (
@@ -68,56 +72,30 @@ export function OnboardingGoalScreen() {
             key={goal.id}
             label={goal.label}
             subtitle={goal.subtitle}
-            selected={selectedGoal === goal.id}
-            onPress={() => setSelectedGoal(goal.id)}
+            selected={selected.includes(goal.id)}
+            onPress={() => toggleGoal(goal.id)}
             icon={<Feather name={goal.icon} size={16} color={colors.primary} />}
           />
         ))}
       </View>
 
-      <View style={styles.footer}>
-        <Button
-          label="continue"
-          onPress={() => {
-            setDraft({ goal: selectedGoal });
-            navigation.navigate("OnboardingPace");
-          }}
-        />
+      <View style={onboardingChrome.footer}>
+        <View style={onboardingChrome.primaryWrap}>
+          <Button
+            label="continue"
+            onPress={() => {
+              setDraft({ goal: selected.join(",") });
+              navigation.navigate("OnboardingPace");
+            }}
+          />
+        </View>
       </View>
-    </View>
+    </OnboardingShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.lg,
-  },
-  sparkle: {
-    fontSize: 22,
-    color: colors.primary,
-    textAlign: "center",
-    letterSpacing: 6,
-    marginBottom: spacing.sm,
-  },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: fontWeight.medium,
-    color: colors.primaryDark,
-    textAlign: "center",
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: fontSize.small,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginBottom: 18,
-  },
   options: {
     flex: 1,
-  },
-  footer: {
-    marginTop: "auto",
   },
 });

@@ -7,7 +7,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-interface PressScaleProps extends Omit<PressableProps, "style" | "children"> {
+interface PressScaleProps extends Omit<PressableProps, "children"> {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   /** Scale when pressed (default 0.97). */
@@ -46,9 +46,17 @@ export function PressScale({
         animateTo(1);
         onPressOut?.(e);
       }}
+      style={style}
       {...rest}
     >
-      <Animated.View style={[style, { transform: [{ scale }] }]}>
+      <Animated.View
+        style={{
+          transform: [{ scale }],
+          width: "100%",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         {children}
       </Animated.View>
     </Pressable>

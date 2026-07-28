@@ -9,16 +9,16 @@ import {
   Pressable,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { RootNavigationProp } from "../../navigation/types";
 import { Button } from "../../components/Button";
+import { OnboardingShell } from "../onboarding/OnboardingShell";
+import { onboardingChrome } from "../onboarding/onboardingChrome";
 import { useAuthStore } from "../../store/authStore";
 import { colors, spacing, radius, fontSize, fontWeight } from "../../theme/theme";
 
 export function SignUpScreen() {
   const navigation = useNavigation<RootNavigationProp>();
-  const insets = useSafeAreaInsets();
   const signUp = useAuthStore((s) => s.signUp);
 
   const [displayName, setDisplayName] = useState("");
@@ -36,108 +36,111 @@ export function SignUpScreen() {
     }
 
     setLoading(true);
-    const err = await signUp(email.trim(), password, displayName.trim());
-    setLoading(false);
-
-    if (err) {
-      setError(err);
+    try {
+      const err = await signUp(email.trim(), password, displayName.trim());
+      if (err) setError(err);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
     <KeyboardAvoidingView
-      style={[
-        styles.container,
-        {
-          paddingTop: insets.top + spacing.lg,
-          paddingBottom: insets.bottom + spacing.lg,
-        },
-      ]}
+      style={styles.flex}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>create your account</Text>
-        <Text style={styles.subtitle}>so your shine can follow you ✦</Text>
-      </View>
-
-      <View style={styles.form}>
-        <Text style={styles.label}>display name</Text>
-        <TextInput
-          style={styles.input}
-          value={displayName}
-          onChangeText={setDisplayName}
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholder="sofia"
-          placeholderTextColor={colors.textMuted}
-        />
-
-        <Text style={styles.label}>email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          placeholder="you@email.com"
-          placeholderTextColor={colors.textMuted}
-        />
-
-        <Text style={styles.label}>password</Text>
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholder="at least 6 characters"
-          placeholderTextColor={colors.textMuted}
-        />
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <Button
-          label={loading ? "creating…" : "sign up"}
-          onPress={onSubmit}
-        />
-
-        <Pressable onPress={() => navigation.navigate("SignIn")}>
-          <Text style={styles.switch}>
-            already have an account? <Text style={styles.switchLink}>sign in</Text>
+      <OnboardingShell>
+        <View style={styles.header}>
+          <Text style={[onboardingChrome.title, styles.titleLeft]}>
+            create your account <Text style={styles.inlineSpark}>✦</Text>
           </Text>
-        </Pressable>
-      </View>
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.field}>
+            <Text style={styles.label}>display name</Text>
+            <TextInput
+              style={styles.input}
+              value={displayName}
+              onChangeText={setDisplayName}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="sofia"
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>email</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              placeholder="you@email.com"
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>password</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="at least 6 characters"
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <View style={[onboardingChrome.primaryWrap, styles.submit]}>
+            <Button
+              label={loading ? "creating…" : "sign up"}
+              onPress={onSubmit}
+            />
+          </View>
+
+          <Pressable onPress={() => navigation.navigate("SignIn")}>
+            <Text style={styles.switch}>
+              already have an account?{" "}
+              <Text style={styles.switchLink}>sign in</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </OnboardingShell>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.lg,
-  },
+  flex: { flex: 1 },
   header: {
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.xl,
   },
-  title: {
+  titleLeft: {
+    textAlign: "left",
+    marginBottom: 0,
+  },
+  inlineSpark: {
+    color: colors.primary,
     fontSize: fontSize.title,
     fontWeight: fontWeight.medium,
-    color: colors.primaryDark,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: fontSize.body,
-    color: colors.textSecondary,
   },
   form: {
-    gap: spacing.sm,
+    gap: spacing.md,
+  },
+  field: {
+    gap: spacing.xs,
   },
   label: {
     fontSize: fontSize.label,
     fontWeight: fontWeight.medium,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
+    color: colors.primarySoft,
   },
   input: {
     borderWidth: 0.5,
@@ -147,16 +150,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     fontSize: fontSize.bodyLg,
     color: colors.textPrimary,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.white,
   },
   error: {
     fontSize: fontSize.small,
     color: colors.errorStrong,
-    marginVertical: spacing.sm,
+  },
+  submit: {
+    marginTop: spacing.sm,
   },
   switch: {
     textAlign: "center",
-    marginTop: spacing.md,
+    marginTop: spacing.xs,
     fontSize: fontSize.body,
     color: colors.textSecondary,
   },

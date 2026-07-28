@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   ghost: {
-    backgroundColor: "transparent",
+    backgroundColor: colors.white,
     borderWidth: 0.5,
     borderColor: colors.border,
   },

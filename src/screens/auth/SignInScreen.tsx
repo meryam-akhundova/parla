@@ -9,16 +9,16 @@ import {
   Pressable,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { RootNavigationProp } from "../../navigation/types";
 import { Button } from "../../components/Button";
+import { OnboardingShell } from "../onboarding/OnboardingShell";
+import { onboardingChrome } from "../onboarding/onboardingChrome";
 import { useAuthStore } from "../../store/authStore";
 import { colors, spacing, radius, fontSize, fontWeight } from "../../theme/theme";
 
 export function SignInScreen() {
   const navigation = useNavigation<RootNavigationProp>();
-  const insets = useSafeAreaInsets();
   const signIn = useAuthStore((s) => s.signIn);
 
   const [email, setEmail] = useState("");
@@ -35,89 +35,84 @@ export function SignInScreen() {
     }
 
     setLoading(true);
-    const err = await signIn(email.trim(), password);
-    setLoading(false);
-
-    if (err) {
-      setError(err);
+    try {
+      const err = await signIn(email.trim(), password);
+      if (err) setError(err);
+    } finally {
+      setLoading(false);
     }
-
   }
 
   return (
     <KeyboardAvoidingView
-      style={[
-        styles.container,
-        {
-          paddingTop: insets.top + spacing.lg,
-          paddingBottom: insets.bottom + spacing.lg,
-        },
-      ]}
+      style={styles.flex}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>welcome back</Text>
-        <Text style={styles.subtitle}>pick up where you left off ✦</Text>
-      </View>
-
-      <View style={styles.form}>
-        <Text style={styles.label}>email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          placeholder="you@email.com"
-          placeholderTextColor={colors.textMuted}
-        />
-
-        <Text style={styles.label}>password</Text>
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholder="your password"
-          placeholderTextColor={colors.textMuted}
-        />
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <Button
-          label={loading ? "signing in…" : "sign in"}
-          onPress={onSubmit}
-        />
-
-        <Pressable onPress={() => navigation.navigate("SignUp")}>
-          <Text style={styles.switch}>
-            new here? <Text style={styles.switchLink}>create an account</Text>
+      <OnboardingShell>
+        <View style={styles.header}>
+          <Text style={onboardingChrome.sparkle}>✦</Text>
+          <Text style={[onboardingChrome.title, styles.titleLeft]}>
+            welcome back
           </Text>
-        </Pressable>
-      </View>
+          <Text style={[onboardingChrome.subtitle, styles.subtitleLeft]}>
+            pick up where you left off
+          </Text>
+        </View>
+
+        <View style={styles.form}>
+          <Text style={styles.label}>email</Text>
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            placeholder="you@email.com"
+            placeholderTextColor={colors.textMuted}
+          />
+
+          <Text style={styles.label}>password</Text>
+          <TextInput
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholder="your password"
+            placeholderTextColor={colors.textMuted}
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <View style={onboardingChrome.primaryWrap}>
+            <Button
+              label={loading ? "signing in…" : "sign in"}
+              onPress={onSubmit}
+            />
+          </View>
+
+          <Pressable onPress={() => navigation.navigate("SignUp")}>
+            <Text style={styles.switch}>
+              new here? <Text style={styles.switchLink}>create an account</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </OnboardingShell>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.lg,
-  },
+  flex: { flex: 1 },
   header: {
     marginBottom: spacing.xxl,
   },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: fontWeight.medium,
-    color: colors.primaryDark,
-    marginBottom: spacing.xs,
+  titleLeft: {
+    textAlign: "left",
   },
-  subtitle: {
-    fontSize: fontSize.body,
-    color: colors.textSecondary,
+  subtitleLeft: {
+    textAlign: "left",
+    marginBottom: 0,
   },
   form: {
     gap: spacing.sm,
@@ -125,7 +120,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: fontSize.label,
     fontWeight: fontWeight.medium,
-    color: colors.textSecondary,
+    color: colors.primarySoft,
     marginTop: spacing.sm,
   },
   input: {
@@ -136,7 +131,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     fontSize: fontSize.bodyLg,
     color: colors.textPrimary,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.white,
   },
   error: {
     fontSize: fontSize.small,
