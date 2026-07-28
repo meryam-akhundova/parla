@@ -1,4 +1,4 @@
-# parla
+# parla ✨
 
 Learn the slang, fillers, and vibes textbooks skip — so you sound like you’ve actually lived there.
 
