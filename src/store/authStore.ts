@@ -56,6 +56,8 @@ type AuthState = {
   signUp: (email: string, password: string, displayName: string) => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  /** Permanently deletes auth user + profile data (App Store 5.1.1). */
+  deleteAccount: () => Promise<string | null>;
   saveOnboarding: () => Promise<string | null>;
   awardQuizSuccess: () => Promise<string | null>;
   awardSlangDropComplete: () => Promise<string | null>;
@@ -133,6 +135,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     await supabase.auth.signOut();
     set({ session: null, profile: null, profileLoaded: false });
+  },
+
+  deleteAccount: async () => {
+    const userId = get().session?.user.id;
+    if (!userId) return "Not signed in";
+
+    try {
+      const { error } = await supabase.rpc("delete_own_account");
+      if (error) return error.message;
+
+      await supabase.auth.signOut();
+      set({ session: null, profile: null, profileLoaded: false });
+      return null;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "couldn't delete account";
+      return message === "Network request failed"
+        ? "can't reach the server — check your connection"
+        : message;
+    }
   },
 
   saveOnboarding: async () => {

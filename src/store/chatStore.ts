@@ -36,6 +36,7 @@ type ChatUiState = {
     role?: PersonaRole,
   ) => void;
   resetThread: (language: string, role?: PersonaRole) => void;
+  clearAll: () => void;
   getThread: (language: string, role?: PersonaRole) => UiMessage[];
 };
 
@@ -75,4 +76,6 @@ export const useChatStore = create<ChatUiState>((set, get) => ({
       },
     });
   },
+
+  clearAll: () => set({ threads: {}, selectedRole: "casual" }),
 }));

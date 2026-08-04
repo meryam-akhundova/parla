@@ -12,6 +12,7 @@ import { useNavigation } from "@react-navigation/native";
 
 import type { RootNavigationProp } from "../../navigation/types";
 import { Button } from "../../components/Button";
+import { LegalLinks } from "../../components/LegalLinks";
 import { OnboardingShell } from "../onboarding/OnboardingShell";
 import { onboardingChrome } from "../onboarding/onboardingChrome";
 import { useAuthStore } from "../../store/authStore";
@@ -104,6 +105,8 @@ export function SignUpScreen() {
               onPress={onSubmit}
             />
           </View>
+
+          <LegalLinks />
 
           <Pressable onPress={() => navigation.navigate("SignIn")}>
             <Text style={styles.switch}>

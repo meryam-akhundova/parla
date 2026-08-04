@@ -1,4 +1,12 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Modal } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  StyleSheet,
+  Modal,
+  Alert,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCallback, useState } from "react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -6,6 +14,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { MainTabNavigationProp } from "../navigation/types";
 import { colors, spacing, radius, fontSize, fontWeight } from "../theme/theme";
 import { Button } from "../components/Button";
+import { LegalLinks } from "../components/LegalLinks";
 import { AnimatedProgressBar } from "../components/animated/AnimatedProgressBar";
 import { avatarInitialFromName } from "../lib/avatar";
 import { buildProfileBadges } from "../lib/buildProfileBadges";
@@ -38,6 +47,8 @@ export function ProfileScreen() {
   const navigation = useNavigation<MainTabNavigationProp>();
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
+  const deleteAccount = useAuthStore((s) => s.deleteAccount);
+  const clearChat = useChatStore((s) => s.clearAll);
   const updateGender = useAuthStore((s) => s.updateGender);
   const updateIncludeSwearWords = useAuthStore((s) => s.updateIncludeSwearWords);
   const setActiveLanguage = useAuthStore((s) => s.setActiveLanguage);
@@ -49,6 +60,7 @@ export function ProfileScreen() {
   const [addOpen, setAddOpen] = useState(false);
   const [pendingLanguage, setPendingLanguage] = useState("");
   const [addingBusy, setAddingBusy] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [badgeExtras, setBadgeExtras] = useState({
     bookmarkedCount: 0,
     weakRecovered: 0,
@@ -161,6 +173,33 @@ export function ProfileScreen() {
   const closeAddLanguage = () => {
     if (addingBusy) return;
     setAddOpen(false);
+  };
+
+  const confirmDeleteAccount = () => {
+    if (deletingAccount) return;
+    Alert.alert(
+      "delete account?",
+      "this permanently deletes your account, progress, and chat history. this can't be undone.",
+      [
+        { text: "cancel", style: "cancel" },
+        {
+          text: "delete",
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              setDeletingAccount(true);
+              const err = await deleteAccount();
+              if (err) {
+                setDeletingAccount(false);
+                Alert.alert("couldn’t delete", err);
+                return;
+              }
+              clearChat();
+            })();
+          },
+        },
+      ],
+    );
   };
 
   const onAddLanguage = async () => {
@@ -346,8 +385,19 @@ export function ProfileScreen() {
             </View>
           ))}
         </View>
+        <LegalLinks variant="stack" />
+
         <View style={styles.signOut}>
           <Button label="sign out" variant="ghost" onPress={() => signOut()} />
+          <Pressable
+            style={styles.deleteAccount}
+            disabled={deletingAccount}
+            onPress={confirmDeleteAccount}
+          >
+            <Text style={styles.deleteAccountText}>
+              {deletingAccount ? "deleting…" : "delete account"}
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
 
@@ -619,6 +669,17 @@ const styles = StyleSheet.create({
   signOut: {
     marginTop: spacing.lg,
     marginBottom: spacing.xl,
+    gap: spacing.md,
+  },
+  deleteAccount: {
+    alignSelf: "center",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  deleteAccountText: {
+    fontSize: fontSize.small,
+    color: colors.errorStrong,
+    fontWeight: fontWeight.medium,
   },
   modalBackdrop: {
     flex: 1,

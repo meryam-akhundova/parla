@@ -6,10 +6,21 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "parla",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F1EFE8"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.parla.app",
+      "buildNumber": "1",
+      "usesNonExemptEncryption": false
     },
     "android": {
+      "package": "com.parla.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -22,7 +33,24 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
-    ]
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F1EFE8"
+        }
+      ]
+    ],
+    "extra": {
+      "legal": {
+        "privacyUrl": "https://parla.app/privacy",
+        "termsUrl": "https://parla.app/terms",
+        "supportUrl": "https://parla.app/support",
+        "supportEmail": "hello@parla.app"
+      }
+    }
   }
 }
